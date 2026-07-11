@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pro Inventory - 个人物品管理</title>
+<script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root { --dot: #cbd5e1; --pri: #3b82f6; --ring: rgba(59,130,246,0.4); }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body,html{height:100%;overflow:hidden;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+  #konva-container{position:relative;width:100%;height:100%;background:#fafbfc;outline:none}
+  #konva-container.grab{cursor:grab!important}
+  #konva-container.grabbing{cursor:grabbing!important}
+  .fixed-ui{position:absolute;z-index:10;pointer-events:none}
+  .fixed-ui>*{pointer-events:auto}
+  .view-switcher{top:16px;left:50%;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
+  .view-tab{padding:6px 16px;font-size:13px;font-weight:500;color:#64748b;border-radius:6px;cursor:pointer;white-space:nowrap}
+  .view-tab:hover{color:#1e293b}
+  .view-tab.active{background:#eff6ff;color:var(--pri);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .toolbar-top{top:16px;left:16px;display:flex;gap:8px;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:6px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);border:1px solid #e2e8f0}
+  .btn-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:none;background:transparent;cursor:pointer;color:#475569}
+  .btn-icon:hover{background:#f1f5f9;color:#0f172a}
+  .btn-icon.disabled{opacity:.3;cursor:not-allowed}
+  .guide-panel{bottom:16px;left:16px;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:16px;border-radius:12px;font-size:13px;color:#475569;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);border:1px solid #e2e8f0;display:flex;flex-direction:column;gap:12px;width:380px;transition:transform .3s cubic-bezier(.16,1,.3,1)}
+  .guide-panel.collapsed{transform:translateY(150%)}
+  .guide-close{cursor:pointer;color:#94a3b8}
+  .guide-close:hover{color:#1e293b}
+  .side-panel{top:16px;right:16px;bottom:16px;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);border:1px solid #e2e8f0;display:flex;flex-direction:column;width:30%;min-width:540px;transition:right .4s cubic-bezier(.16,1,.3,1)}
+  .side-panel.collapsed{right:calc(-30% + 16px)}
+  .side-panel.fullscreen{left:16px;right:16px;width:auto;max-width:unset;bottom:16px;top:72px}
+  .side-panel.fullscreen .resize-handle{display:none}
+  .resize-handle{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:20}
+  .input-ghost{border:1px solid transparent;background:transparent;padding:4px 6px;border-radius:4px;font-size:inherit;width:100%;outline:none}
+  .input-ghost:hover{border-color:#cbd5e1;background:#fff}
+  .input-ghost:focus{background:#fff;border-color:var(--pri);box-shadow:0 0 0 3px var(--ring)}
+  .custom-select{width:100%;border:1px solid transparent;background:transparent;border-radius:4px;padding:4px 6px;cursor:pointer;outline:none;display:flex;justify-content:space-between;align-items:center}
+  .custom-select:hover{border-color:#cbd5e1;background:#fff}
+  .custom-select.active{background:#fff;border-color:var(--pri);box-shadow:0 0 0 3px var(--ring)}
+  .custom-select.badge-idle{color:#dc2626;font-weight:600}
+  .custom-select.badge-active{color:#166534;font-weight:600}
+  #custom-dropdown{position:fixed;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);z-index:9999;padding:4px;display:none;min-width:140px;max-height:300px;overflow-y:auto}
+  .dropdown-item{padding:8px 12px;border-radius:4px;cursor:pointer;font-size:13px;color:#334155}
+  .dropdown-item:hover{background:#f1f5f9;color:#0f172a}
+  .table-wrapper{flex:1;overflow:auto;padding:0 16px 16px 16px}
+  table{border-collapse:separate;border-spacing:0;font-size:13px;table-layout:auto;width:100%}
+  th{position:sticky;top:0;background:rgba(255,255,255,.95);backdrop-filter:blur(4px);text-align:left;padding:2px 4px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0;z-index:2}
+  .hdr-inp{border:none;background:transparent;font-weight:600;font-size:12px;color:inherit;padding:2px 0;outline:none;border-radius:3px;word-break:break-all;overflow-wrap:anywhere;white-space:normal;min-height:16px}
+  .hdr-inp:hover,.hdr-inp:focus{background:#f1f5f9}
+  td{padding:4px;border-bottom:1px solid #f1f5f9;vertical-align:middle;word-break:break-all;overflow-wrap:anywhere;white-space:normal}
+  tr.selected td{background:#eff6ff}
+  tr.item-row:hover td{background:#f8fafc}
+  tr.group-header{position:sticky;top:38px;z-index:1;background:#f8fafc;cursor:pointer}
+  tr.group-header:hover{background:#f1f5f9}
+  tr.group-header td{padding:8px 12px;font-size:14px;font-weight:600;color:#334155;border-bottom:2px solid #e2e8f0;border-top:1px solid #e2e8f0;box-shadow:0 4px 6px -4px rgba(0,0,0,.05)}
+  .img-upload-box{width:36px;height:36px;border-radius:6px;background:#f1f5f9;border:1px dashed #cbd5e1;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;margin-left:4px}
+  .img-upload-box img{width:100%;height:100%;object-fit:cover}
+  .ctx-item{padding:8px 12px;border-radius:4px;cursor:pointer;color:#334155;white-space:nowrap}
+  .ctx-item:hover{background:#f1f5f9}
+  #inplace-editor{position:absolute;z-index:100;display:none;background:#fff;border:2px solid var(--pri);border-radius:8px;padding:6px 12px;outline:none;font-family:inherit;font-weight:600;box-shadow:0 10px 15px -3px rgba(0,0,0,.1)}
+  kbd{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:1px 5px;font-size:12px}
+</style>
+</head>
+<body>
+
+<div id="konva-container" tabindex="0"></div>
+<!-- Panel Toggle (JS-positioned to always hug panel's left-outer-top edge) -->
+<div class="panel-toggle" id="panel-toggle-btn" onclick="app.togglePanel()" style="position:fixed;z-index:99;background:#fff;border:1px solid #e2e8f0;border-radius:8px;width:32px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#64748b;box-shadow:-2px 2px 5px rgba(0,0,0,.05)">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+</div>
+<input type="text" id="inplace-editor" autocomplete="off" spellcheck="false">
+<div id="custom-dropdown"></div>
+
+<!-- Right-click Context Menu -->
+<div id="ctx-menu" style="display:none;position:fixed;z-index:999;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 10px 25px -5px rgba(0,0,0,.15);padding:4px;min-width:140px;font-size:13px">
+  <div class="ctx-item" data-action="lock">🔒 锁定</div>
+  <div class="ctx-item" data-action="rename">✏️ 重命名</div>
+  <div class="ctx-item" data-action="delete" style="color:#ef4444">🗑 删除</div>
+</div>
+
+<!-- View Switcher -->
+<div class="fixed-ui view-switcher">
+  <div class="view-tab active" data-view="split" onclick="app.switchView('split')">分屏协作</div>
+  <div class="view-tab" data-view="table" onclick="app.switchView('table')">全屏数据表</div>
+</div>
+
+<!-- Toolbar -->
+<div class="fixed-ui toolbar-top">
+  <button class="btn-icon" onclick="app.undo()" id="btn-undo" title="撤销 Ctrl+Z">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+  </button>
+  <button class="btn-icon" onclick="app.redo()" id="btn-redo" title="重做 Ctrl+Shift+Z">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/></svg>
+  </button>
+  <div style="width:1px;height:24px;background:#e2e8f0;align-self:center"></div>
+  <div style="display:flex;align-items:center;padding:0 8px;font-size:12px;font-weight:500;color:#64748b" id="sync-status">已同步</div>
+</div>
+
+<!-- Guide Toggle -->
+<button onclick="app.toggleGuide(true)" title="交互手册" style="position:absolute;bottom:16px;left:16px;z-index:10" class="btn-icon bg-white shadow-md border border-slate-200">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+</button>
+
+<!-- Guide Panel -->
+<div id="guide-panel" class="fixed-ui guide-panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;width:100%">
+    <div style="font-weight:600;color:#1e293b;display:flex;align-items:center;gap:8px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      商业级交互操作手册
+    </div>
+    <div class="guide-close" onclick="app.toggleGuide(false)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+  </div>
+  <ul style="list-style:disc;padding-left:16px;display:flex;flex-direction:column;gap:8px">
+    <li><b>绝对平移优先级</b>：按住 <kbd>空格</kbd> 或按下 <b>鼠标中键</b> 拖拽，即使在对象上方也绝对优先平移视图。</li>
+    <li><b>自适应等比圆角</b>：矩形缩放时圆角完美等比缩放，描边宽度恒定不受影响。</li>
+    <li><b>网格挤位重排</b>：拖拽物品卡停留间隙 >0.5秒，后方物品批量顺延退让；容器缩小时超出部分自动裁切。</li>
+    <li><b>全维同步重命名</b>：表格中修改分区名，画布中对应矩形及所有关联记录瞬间同步，不再胡乱新建。</li>
+  </ul>
+</div>
+
+<!-- Right Side Panel -->
+<div class="fixed-ui side-panel" id="side-panel">
+  <div class="resize-handle" id="panel-resize"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid #e2e8f0">
+    <h2 style="font-weight:600;color:#1e293b;font-size:15px">数据表 <span id="item-count" style="font-size:12px;color:#94a3b8;font-weight:400;margin-left:8px"></span></h2>
+    <button onclick="app.addItem()" style="padding:8px 16px;background:#2563eb;color:#fff;border-radius:8px;font-size:13px;font-weight:500;border:none;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.1)">+ 添加新物品</button>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:12px">
+    <input type="text" id="search-input" class="input-ghost bg-white border-slate-200" placeholder="搜索名称、编号或备注..." style="width:180px">
+    <div id="filter-cat" class="custom-select bg-white border-slate-200" style="width:100px" data-field="filter_cat">全部分类</div>
+    <div id="filter-status" class="custom-select bg-white border-slate-200" style="width:100px" data-field="filter_status">全部状态</div>
+    <div style="width:1px;height:24px;background:#e2e8f0;align-self:center;margin:0 4px"></div>
+    <div id="sort-rule" class="custom-select bg-white border-slate-200" style="width:110px" data-field="sort_rule">编号降序</div>
+  </div>
+  <div class="table-wrapper">
+    <table id="data-table">
+      <thead><tr><th style="width:48px"><div class="hdr-inp" contenteditable="true">图片</div></th><th style="width:80px"><div class="hdr-inp" contenteditable="true">编号</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">名称</div></th><th style="width:70px"><div class="hdr-inp" contenteditable="true">分类</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">房间(1级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">位置(2级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">容器(3级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">子容器(4级)</div></th><th style="width:60px"><div class="hdr-inp" contenteditable="true">状态</div></th><th style="width:50px"><div class="hdr-inp" contenteditable="true">数量</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">备注</div></th><th style="width:40px"><div class="hdr-inp" style="color:#94a3b8">操作</div></th></tr></thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none">
+
+<script>
+// ============ CONSTANTS ============
+const S = 20; // snap
+const NODE_S = {
+  '房间':   {bg:'#f1f5f9',st:'#64748b',sw:2,   cb:'#e2e8f0',ct:'#334155'},
+  '位置':   {bg:'#eff6ff',st:'#93c5fd',sw:1.5, cb:'#dbeafe',ct:'#1e40af'},
+  '容器':   {bg:'#fefce8',st:'#fde047',sw:1,   cb:'#fef08a',ct:'#854d0e'},
+  '子容器': {bg:'#f0fdf4',st:'#86efac',sw:1,   cb:'#dcfce7',ct:'#166534'}
+};
+const CATS = ['衣物','书籍文件','电子产品','日用品','收藏/纪念品','工具','其他'];
+const STATS = ['常用','偶尔','闲置待处理'];
+const SORTS = [{l:'最新创建 ▲',v:'id-desc'},{l:'最新创建 ▼',v:'id-asc'},{l:'编号升序',v:'code-asc'},{l:'编号降序',v:'code-desc'},{l:'名称 A-Z',v:'name-asc'},{l:'名称 Z-A',v:'name-desc'},{l:'数量多→少',v:'qty-desc'},{l:'数量少→多',v:'qty-asc'}];
+let _nextItemCode=1;
+const GID = () => 'id_'+Math.random().toString(36).substr(2,9);
+
+// Force 1x pixel ratio — cuts GPU fill-rate by 4x on Retina for ~3x smoother rendering
+Konva.pixelRatio = 1;
+
+// ============ APP CLASS ============
+class App {
+  constructor() {
+    this.st = { nodes:[], items:[] };
+    this.hist = []; this.hi = -1; this.undoing = false;
+    this.sel = []; this.icache = {};
+    this.filt = { text:'', cat:'', stat:'' };
+    this.sort = 'code-desc';
+    this.view = 'split';
+    this.cg = new Set();
+    this.svTimer = null;
+    this.dragId = null; this.hSlot = null; this.hTimer = null;
+    this.editingNid = null;
+    this.upId = null;
+
+    this.initKonva();
+    this.bindEvts();
+    this.initDD();
+    this.load();
+
+    if(localStorage.getItem('guideClosed')==='1') document.getElementById('guide-panel').classList.add('collapsed');
+  }
+
+  // ---- VIEW ----
+  switchView(m) {
+    this.view=m;
+    document.querySelectorAll('.view-tab').forEach(e=>e.classList.remove('active'));
+    document.querySelector(`.view-tab[data-view="${m}"]`).classList.add('active');
+    const p=document.getElementById('side-panel');
+    if(m==='table'){p.classList.add('fullscreen');p.classList.remove('collapsed');p.style.width=''}
+    else p.classList.remove('fullscreen');
+    setTimeout(()=>{this.stage.width(document.getElementById('konva-container').clientWidth);this.stage.height(document.getElementById('konva-container').clientHeight);this.updateArrowPos()},450);
+  }
+
+  toggleGuide(s) {
+    const p=document.getElementById('guide-panel');
+    if(s){p.classList.remove('collapsed');localStorage.setItem('guideClosed','0')}
+    else{p.classList.add('collapsed');localStorage.setItem('guideClosed','1')}
+  }
+
+  togglePanel() {
+    const p=document.getElementById('side-panel');
+    p.classList.toggle('collapsed');
+    this.updateArrowPos();
+    // rAF loop during CSS transition (0.4s ≈ 24 frames) — zero delay, arrow "grows on" panel
+    let frames=0;const track=()=>{this.updateArrowPos();if(frames++<30)requestAnimationFrame(track)};
+    requestAnimationFrame(track);
+    setTimeout(()=>{this.stage.width(document.getElementById('konva-container').clientWidth);this.stage.height(document.getElementById('konva-container').clientHeight)},450);
+    this.saveViewState();
+  }
+
+  updateArrowPos() {
+    const p=document.getElementById('side-panel');
+    const tg=document.getElementById('panel-toggle-btn');
+    if(!tg)return;
+    if(p.classList.contains('fullscreen')){tg.style.display='none';return}
+    tg.style.display='flex';
+    const pr=p.getBoundingClientRect();
+    tg.style.left=(pr.left-36)+'px';
+    tg.style.top=(pr.top+16)+'px';
+    tg.style.right='auto';
+  }
+
+  _svsTimer=null;
+  saveViewState(){
+    clearTimeout(this._svsTimer);
+    this._svsTimer=setTimeout(()=>{
+      const p=document.getElementById('side-panel');
+      localStorage.setItem('pro_inv_view',JSON.stringify({
+        stageX:this.stage.x(),stageY:this.stage.y(),stageScale:this.stage.scaleX(),
+        panelW:p.classList.contains('fullscreen')?0:parseInt(p.style.width)||0
+      }));
+    },500);
+  }
+
+  toggleGroup(gid){if(this.cg.has(gid))this.cg.delete(gid);else this.cg.add(gid);this.rT()}
+
+  // ---- DATA ----
+  async load() {
+    try{
+      const r=await fetch('/api/state');const d=await r.json();
+      this.st.nodes=d.nodes||[];this.st.items=d.items||[];
+      // Init permanent item code counter (find next available)
+      const codes=this.st.items.map(i=>parseInt((i.item_code||'0').replace('ITM-',''))).filter(n=>!isNaN(n));
+      _nextItemCode=codes.length?Math.max(...codes)+1:1;
+      this.undoing=true;this.hist=[JSON.stringify(this.st)];this.hi=0;this.undoing=false;
+      this.uUI();this.rT();this.sync();this.updateArrowPos();
+      // Restore saved view state
+      const vs=localStorage.getItem('pro_inv_view');
+      if(vs){const v=JSON.parse(vs);
+        if(v.stageX!==undefined)this.stage.x(v.stageX);
+        if(v.stageY!==undefined)this.stage.y(v.stageY);
+        if(v.stageScale)this.stage.scale({x:v.stageScale,y:v.stageScale});
+        if(v.panelW){const p=document.getElementById('side-panel');p.style.width=v.panelW+'px';p.style.minWidth=''}
+        this.updateArrowPos();
+      }
+    }catch(e){console.error(e)}
+  }
+
+  save() {
+    const el=document.getElementById('sync-status');
+    el.textContent='同步中...';el.style.color='#eab308';
+    clearTimeout(this.svTimer);
+    this.svTimer=setTimeout(async()=>{
+      try{
+        await fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(this.st)});
+        el.textContent='已同步';el.style.color='#22c55e';
+      }catch(e){el.textContent='同步失败';el.style.color='#ef4444'}
+    },800);
+  }
+
+  record() {
+    if(this.undoing)return;
+    const s=JSON.stringify(this.st);
+    if(this.hi>=0&&this.hist[this.hi]===s)return;
+    this.hist=this.hist.slice(0,this.hi+1);this.hist.push(s);this.hi++;
+    if(this.hist.length>50){this.hist.shift();this.hi--}
+    this.uUI();this.save();this.sync();this.rT();
+  }
+
+  uUI() {
+    document.getElementById('btn-undo').classList.toggle('disabled',this.hi<=0);
+    document.getElementById('btn-redo').classList.toggle('disabled',this.hi>=this.hist.length-1);
+  }
+
+  undo() {
+    if(this.hi>0){this.undoing=true;this.hi--;this.st=JSON.parse(this.hist[this.hi]);this.sel=[];this.tr.nodes([]);this.sync();this.rT();this.save();this.uUI();this.undoing=false}
+  }
+  redo() {
+    if(this.hi<this.hist.length-1){this.undoing=true;this.hi++;this.st=JSON.parse(this.hist[this.hi]);this.sel=[];this.tr.nodes([]);this.sync();this.rT();this.save();this.uUI();this.undoing=false}
+  }
+
+  // ---- HIERARCHY ----
+  getH(lid) {
+    let l1=null,l2=null,l3=null,l4=null;
+    if(!lid)return{l1,l2,l3,l4};
+    let c=this.st.nodes.find(n=>n.id===lid);
+    if(!c)return{l1,l2,l3,l4};
+    if(c.type==='房间')l1=c;
+    else if(c.type==='位置'){l2=c;l1=this.st.nodes.find(n=>n.id===c.parentId)}
+    else if(c.type==='容器'){l3=c;l2=this.st.nodes.find(n=>n.id===c.parentId);if(l2)l1=this.st.nodes.find(n=>n.id===l2.parentId)}
+    else if(c.type==='子容器'){l4=c;l3=this.st.nodes.find(n=>n.id===c.parentId);if(l3){l2=this.st.nodes.find(n=>n.id===l3.parentId);if(l2)l1=this.st.nodes.find(n=>n.id===l2.parentId)}}
+    return{l1,l2,l3,l4};
+  }
+
+  renameLoc(nid,nm) {
+    nm=nm.trim();const nd=this.st.nodes.find(n=>n.id===nid);
+    if(nd&&nm&&nd.name!==nm){nd.name=nm;this.record()}
+  }
+
+  hInput(iid,lv,nm) {
+    nm=nm.trim();const it=this.st.items.find(x=>x.id===iid);if(!it)return;
+    let{l1,l2,l3,l4}=this.getH(it.location_id);
+    const cur=[l1,l2,l3,l4][lv-1];
+    const par=[null,l1,l2,l3][lv-1];
+    const tp=['房间','位置','容器','子容器'][lv-1];
+    if(!nm){it.location_id=par?par.id:null;this.record();return}
+    if(!par&&lv>1)return; // cascading guard
+    // If current node exists AND name differs → rename = create new / merge into existing
+    if(cur&&cur.name!==nm){
+      const ex=this.st.nodes.find(x=>x.type===tp&&x.name===nm&&x.parentId===(par?par.id:null));
+      if(ex){it.location_id=ex.id}else{const n=this.mkNode(tp,nm,par);this.st.nodes.push(n);it.location_id=n.id}
+    }else if(!cur){
+      const ex=this.st.nodes.find(x=>x.type===tp&&x.name===nm&&x.parentId===(par?par.id:null));
+      if(ex){it.location_id=ex.id}else{const n=this.mkNode(tp,nm,par);this.st.nodes.push(n);it.location_id=n.id}
+    }
+    // If cur && cur.name===nm → unchanged, do nothing
+    this.record();
+  }
+
+  mkNode(tp,nm,pn) {
+    let x=100,y=100,w=600,h=400;
+    if(tp==='位置'){w=400;h=280}
+    if(tp==='容器'){w=240;h=180}
+    if(tp==='子容器'){w=160;h=100}
+    if(pn){const sc=this.st.nodes.filter(n=>n.parentId===pn.id).length;x=30+(sc%3)*(w+20);y=60+Math.floor(sc/3)*(h+20)}
+    else{const c=this.st.nodes.filter(n=>n.type==='房间').length;x=100+(c%3)*650;y=100+Math.floor(c/3)*450}
+    return{id:GID(),name:nm,type:tp,parentId:pn?pn.id:null,x,y,width:w,height:h};
+  }
+
+  // ---- FILTERED ITEMS ----
+  filtItems() {
+    let r=this.st.items;
+    if(this.filt.text){const q=this.filt.text.toLowerCase();r=r.filter(i=>(i.name||'').toLowerCase().includes(q)||(i.item_code||'').toLowerCase().includes(q)||(i.notes||'').toLowerCase().includes(q))}
+    if(this.filt.cat)r=r.filter(i=>i.category===this.filt.cat);
+    if(this.filt.stat)r=r.filter(i=>i.status===this.filt.stat);
+    r.sort((a,b)=>{
+      if(this.sort==='id-asc')return 0; // preserve insertion order (oldest first)
+      if(this.sort==='code-asc')return(a.item_code||'').localeCompare(b.item_code||'');
+      if(this.sort==='code-desc')return(b.item_code||'').localeCompare(a.item_code||'');
+      if(this.sort==='name-asc')return(a.name||'').localeCompare(b.name||'');
+      if(this.sort==='name-desc')return(b.name||'').localeCompare(a.name||'');
+      if(this.sort==='qty-desc')return(parseInt(b.quantity)||0)-(parseInt(a.quantity)||0);
+      if(this.sort==='qty-asc')return(parseInt(a.quantity)||0)-(parseInt(b.quantity)||0);
+      return 0; // id-desc: newest first (default)
+    });
+    // For id-desc, reverse to show newest first
+    if(this.sort==='id-desc')r.reverse();
+    return r;
+  }
+
+  // ---- TABLE ----
+  rT() {
+    const itms=this.filtItems();
+    document.getElementById('item-count').textContent=`(共${itms.length}件)`;
+    const gm=new Map();
+    itms.forEach(i=>{const{l1}=this.getH(i.location_id);const gid=l1?l1.id:'un';const gn=l1?l1.name:'未分配空间';if(!gm.has(gid))gm.set(gid,{id:gid,name:gn,items:[]});gm.get(gid).items.push(i)});
+    const gs=Array.from(gm.values());let h='';
+    gs.forEach(g=>{
+      const cc=this.cg.has(g.id);
+      h+=`<tr class="group-header" onclick="app.toggleGroup('${g.id}')"><td colspan="12"><span style="display:inline-block;width:16px;color:#64748b">${cc?'▶':'▼'}</span><input type="text" style="background:transparent;border:none;outline:none;font-weight:bold;padding:0;color:#334155;width:auto" value="${g.name}" placeholder="未命名分组" onclick="event.stopPropagation()" onchange="app.renameLoc('${g.id}',this.value)"><span style="font-size:12px;font-weight:400;color:#94a3b8;margin-left:8px">(${g.items.length}件)</span></td></tr>`;
+      if(!cc){
+        h+=g.items.map(i=>{
+          const sel=this.sel.includes(i.id)?'selected':'';
+          const{l1,l2,l3,l4}=this.getH(i.location_id);
+          return`<tr class="item-row ${sel}" data-id="${i.id}" onclick="app.rowClick('${i.id}',event)"><td><div class="img-upload-box" onclick="app.trigUp('${i.id}')">${i.image?`<img src="/uploads/${i.image}">`:'<span style="color:#cbd5e1;font-size:16px">📷</span>'}</div></td><td><div style="font-size:11px;color:#64748b;font-family:monospace">${i.item_code}</div></td><td><input class="input-ghost" style="font-weight:500;color:#1e293b" value="${i.name||''}" onchange="app.upItem('${i.id}','name',this.value)"></td><td><div class="custom-select" data-id="${i.id}" data-field="category">${i.category||'请选择'}</div></td><td><input class="input-ghost" value="${l1?l1.name:''}" placeholder="房间" onchange="app.hInput('${i.id}',1,this.value)"></td><td><input class="input-ghost" value="${l2?l2.name:''}" placeholder="位置" onchange="app.hInput('${i.id}',2,this.value)" ${l1?'':'disabled'}></td><td><input class="input-ghost" value="${l3?l3.name:''}" placeholder="容器" onchange="app.hInput('${i.id}',3,this.value)" ${l2?'':'disabled'}></td><td><input class="input-ghost" value="${l4?l4.name:''}" placeholder="子容器" onchange="app.hInput('${i.id}',4,this.value)" ${l3?'':'disabled'}></td><td><div class="custom-select ${i.status==='闲置待处理'?'badge-idle':'badge-active'}" data-id="${i.id}" data-field="status">${i.status||'常用'}</div></td><td><input type="number" min="1" class="input-ghost" value="${i.quantity||1}" onchange="app.upItem('${i.id}','quantity',this.value)"></td><td><input class="input-ghost" value="${i.notes||''}" placeholder="..." onchange="app.upItem('${i.id}','notes',this.value)"></td><td><button onclick="app.delItem('${i.id}');event.stopPropagation()" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 8px;border-radius:4px">✖</button></td></tr>`;
+        }).join('');
+      }
+    });
+    document.getElementById('table-body').innerHTML=h;
+  }
+
+  upItem(id,f,v){const it=this.st.items.find(x=>x.id===id);if(it&&it[f]!==v){if(f==='quantity')v=parseInt(v)||1;it[f]=v;this.record()}}
+
+  rowClick(id,e){if(e.target.tagName==='INPUT'||e.target.closest('.custom-select')||e.target.closest('.img-upload-box')||e.target.tagName==='BUTTON')return;this.sel=[id];this.tr.nodes([]);const g=this.stage.findOne('#'+id);if(g)g.moveToTop();document.querySelectorAll('#table-body tr.item-row').forEach(r=>r.classList.remove('selected'));const tr=document.querySelector(`tr[data-id="${id}"]`);if(tr)tr.classList.add('selected');this.sync()}
+
+  addItem() {
+    // Find next available permanent code (fill gaps from deleted items)
+    const used=new Set(this.st.items.map(i=>parseInt((i.item_code||'').replace('ITM-',''))).filter(n=>!isNaN(n)));
+    let codeNum=_nextItemCode;
+    while(used.has(codeNum))codeNum++;
+    const code='ITM-'+String(codeNum).padStart(4,'0');
+    _nextItemCode=codeNum+1;
+    const cx=(-this.stage.x()+this.stage.width()/2)/this.stage.scaleX()-80;
+    const cy=(-this.stage.y()+this.stage.height()/2)/this.stage.scaleY()-30;
+    const it={id:GID(),item_code:code,name:'新物品',category:'其他',status:'常用',location_id:null,quantity:1,notes:'',x:Math.round(cx/10)*10,y:Math.round(cy/10)*10,sort_order:0};
+    this.st.items.unshift(it);this.sel=[it.id];this.record();
+  }
+
+  delItem(id){this.st.items=this.st.items.filter(i=>i.id!==id);if(this.sel.includes(id)){this.sel=[];this.tr.nodes([])}this.record()}
+
+  trigUp(id){this.upId=id;document.getElementById('fileInput').click()}
+
+  // ---- DROPDOWN ----
+  initDD() {
+    const dd=document.getElementById('custom-dropdown');
+    document.addEventListener('click',e=>{
+      const sel=e.target.closest('.custom-select');
+      if(sel){e.stopPropagation();const f=sel.dataset.field;const id=sel.dataset.id;let opts=[],cb=null;
+        if(f==='category'){opts=CATS.map(c=>({l:c,v:c}));cb=v=>this.upItem(id,f,v)}
+        else if(f==='status'){opts=STATS.map(c=>({l:c,v:c}));cb=v=>this.upItem(id,f,v)}
+        else if(f==='filter_cat'){opts=[{l:'全部分类',v:''},...CATS.map(c=>({l:c,v:c}))];cb=v=>{this.filt.cat=v;sel.textContent=v||'全部分类';this.rT();this.sync()}}
+        else if(f==='filter_status'){opts=[{l:'全部状态',v:''},...STATS.map(c=>({l:c,v:c}))];cb=v=>{this.filt.stat=v;sel.textContent=v||'全部状态';this.rT();this.sync()}}
+        else if(f==='sort_rule'){opts=SORTS;cb=v=>{this.sort=v;sel.textContent=SORTS.find(x=>x.v===v).l;this.rT()}}
+        dd.innerHTML=opts.map(o=>`<div class="dropdown-item" data-val="${o.v}">${o.l}</div>`).join('');
+        dd.querySelectorAll('.dropdown-item').forEach(el=>{el.onclick=ev=>{ev.stopPropagation();cb(el.dataset.val);if(id){sel.textContent=el.dataset.val;if(f==='status')sel.className=`custom-select ${el.dataset.val==='闲置待处理'?'badge-idle':'badge-active'}`}dd.style.display='none'}});
+        const r=sel.getBoundingClientRect();dd.style.left=r.left+'px';dd.style.top=(r.bottom+4)+'px';dd.style.display='block'
+      }else{dd.style.display='none'}
+    });
+    document.getElementById('search-input').addEventListener('input',e=>{this.filt.text=e.target.value;this.rT();this.sync()});
+  }
+
+  // ============ KONVA ENGINE ============
+  initKonva() {
+    const ct=document.getElementById('konva-container');
+    this.stage=new Konva.Stage({container:'konva-container',width:ct.clientWidth,height:ct.clientHeight,draggable:false});
+    
+    // Dot pattern canvas (GPU-composited with stage, zero CSS overhead)
+    const dc=document.createElement('canvas');dc.width=20;dc.height=20;
+    dc.getContext('2d').fillStyle='#cbd5e1';dc.getContext('2d').beginPath();dc.getContext('2d').arc(10,10,1,0,Math.PI*2);dc.getContext('2d').fill();
+    const bgL=new Konva.Layer({name:'bgL'});
+    bgL.add(new Konva.Rect({x:-50000,y:-50000,width:100000,height:100000,fillPatternImage:dc,fillPatternRepeat:'repeat',name:'bg'}));
+    this.stage.add(bgL);
+
+    this.nL=new Konva.Layer();  // nodes
+    this.iL=new Konva.Layer();  // items
+    this.cL=new Konva.Layer();  // capsules
+    this.tL=new Konva.Layer();  // top (transformer, selection)
+    this.stage.add(this.nL);this.stage.add(this.iL);this.stage.add(this.cL);this.stage.add(this.tL);
+
+    this.tr=new Konva.Transformer({ignoreStroke:true,padding:0,borderStroke:'#3b82f6',borderStrokeWidth:2,anchorFill:'#fff',anchorStroke:'#3b82f6',anchorSize:8,anchorCornerRadius:2,keepRatio:false,rotateEnabled:false,enabledAnchors:[],boundBoxFunc:(o,n)=>n.width<100||n.height<60?o:n});
+    this.tL.add(this.tr);
+
+    this.selRect=new Konva.Rect({fill:'rgba(59,130,246,0.2)',stroke:'#3b82f6',strokeWidth:1,visible:false,listening:false});
+    this.tL.add(this.selRect);
+
+    this.spPress=false;this.panning=false;this.seling=false;
+    let x1,y1,x2,y2;
+
+    // ---- STAGE EVENTS ----
+    this.stage.on('mousedown',e=>{
+      if(e.target.getParent()&&e.target.getParent().className==='Transformer')return;
+      if(e.evt.button===1||this.spPress){e.cancelBubble=true;this.panning=true;ct.classList.add('grabbing');return}
+      if(e.target.name()==='bg'){this.seling=true;const p=this.stage.getRelativePointerPosition();x1=p.x;y1=p.y;this.selRect.visible(true);this.selRect.width(0);this.selRect.height(0);this.sel=[];this.tr.nodes([]);this.sync();document.querySelectorAll('#table-body tr.item-row').forEach(r=>r.classList.remove('selected'))}
+    });
+
+    this.stage.on('mousemove',e=>{
+      if(this.panning){this.stage.x(this.stage.x()+e.evt.movementX);this.stage.y(this.stage.y()+e.evt.movementY);this.upBg();this._reqCaps()}
+      else if(this.seling){const p=this.stage.getRelativePointerPosition();x2=p.x;y2=p.y;this.selRect.setAttrs({x:Math.min(x1,x2),y:Math.min(y1,y2),width:Math.abs(x2-x1),height:Math.abs(y2-y1)});this.tL.batchDraw()}
+    });
+
+    this.stage.on('mouseup',e=>{
+      if(this.panning){this.panning=false;ct.classList.remove('grabbing');this.saveViewState()}
+      else if(this.seling){this.seling=false;this.selRect.visible(false);const box=this.selRect.getClientRect();const sel=[];const ci=(layer,name)=>{layer.getChildren().forEach(g=>{if(g.name()===name&&Konva.Util.haveIntersection(box,g.getClientRect({skipTransform:true}))){sel.push(g);this.sel.push(g.id())}else if(g.name()==='node-group'){g.getChildren().forEach(c=>{if((c.name()==='node-group'||c.name()==='item-group')&&Konva.Util.haveIntersection(box,c.getClientRect({skipTransform:true}))){sel.push(c);this.sel.push(c.id())}})}})};ci(this.nL,'node-group');ci(this.iL,'item-group');this.tr.nodes(sel);this.sync();this.rT();this._updateAnchors()}
+    });
+
+    this.stage.on('click tap',e=>{
+      if(e.evt.button===1||this.spPress||this.seling)return;
+      if(e.target.getParent()&&e.target.getParent().className==='Transformer')return;
+      let t=e.target;
+      if(t.name()==='capsuleTxt'||t.name()==='capsuleBg'){const nid=t.getParent().id().replace('cap_','');t=this.stage.findOne('#'+nid)}
+      while(t&&!['node-group','item-group','bg'].includes(t.name()))t=t.parent;
+      if(t&&t.name()!=='bg'){
+        // Skip locked objects for selection
+        const isNode=t.name()==='node-group';
+        const isLocked=isNode?(this.st.nodes.find(n=>n.id===t.id())?.locked):(this.st.items.find(i=>i.id===t.id())?.locked);
+        if(isLocked)return;
+        const tid=t.id();
+        if(e.evt.shiftKey){
+          const idx=this.sel.indexOf(tid);
+          if(idx>-1)this.sel.splice(idx,1);else this.sel.push(tid);
+          const hasNode=this.sel.some(id=>{const nd=this.stage.findOne('#'+id);return nd&&nd.name()==='node-group'});
+          if(!hasNode)this.tr.nodes([]);
+        }else{
+          this.sel=[tid];t.moveToTop();
+          if(t.name()==='node-group'){this.tr.nodes([t]);this.tr.moveToTop()}else this.tr.nodes([]);
+        }
+      }else{this.sel=[];this.tr.nodes([])}
+      this.sync();this._updateAnchors();document.querySelectorAll('#table-body tr.item-row').forEach(r=>r.classList.remove('selected'));
+      this.sel.forEach(id=>{const tr=document.querySelector(`tr[data-id="${id}"]`);if(tr)tr.classList.add('selected')})
+    });
+
+    // ---- CUSTOM RESIZE ANCHORS (direct width/height, NEVER scale; Figma-grade) ----
+    const ANCHOR_R=6;
+    const anchors={tl:null,tr:null,bl:null,br:null};
+    ['tl','tr','bl','br'].forEach(pos=>{
+      const c=new Konva.Circle({name:'resize-'+pos,radius:ANCHOR_R,fill:'#fff',stroke:'#3b82f6',strokeWidth:2,draggable:true,visible:false,strokeScaleEnabled:false});
+      this.tL.add(c);anchors[pos]=c;
+    });
+    let _resizing=null,_resizeNode=null,_startX=0,_startY=0,_startW=0,_startH=0,_startNX=0,_startNY=0,_resizeRaf=null,_bgRect=null;
+    const updateAnchors=()=>{
+      if(this.sel.length!==1){Object.values(anchors).forEach(a=>a.visible(false));return}
+      const nd=this.stage.findOne('#'+this.sel[0]);
+      if(!nd||nd.name()!=='node-group'){Object.values(anchors).forEach(a=>a.visible(false));return}
+      const sc=this.stage.scaleX();
+      const ar=Math.max(4,ANCHOR_R/sc); // keep clickable at any zoom
+      Object.values(anchors).forEach(a=>a.radius(ar));
+      const ap=nd.absolutePosition(),w=nd.width()*sc,h=nd.height()*sc;
+      // Cache inverse matrix (1 inversion instead of 4 per frame)
+      const im=this.tL.getAbsoluteTransform().copy().invert();
+      const tl=im.point(ap),tr=im.point({x:ap.x+w,y:ap.y}),bl=im.point({x:ap.x,y:ap.y+h}),br=im.point({x:ap.x+w,y:ap.y+h});
+      anchors.tl.position(tl);anchors.tr.position(tr);
+      anchors.bl.position(bl);anchors.br.position(br);
+      anchors.tl.visible(true);anchors.tr.visible(true);
+      anchors.bl.visible(true);anchors.br.visible(true);
+    };
+    this.stage.on('dragstart',e=>{
+      const t=e.target;
+      if(!t.name().startsWith('resize-'))return;
+      _resizing=t.name().replace('resize-','');
+      _resizeNode=this.stage.findOne('#'+this.sel[0]);
+      if(!_resizeNode)return;
+      _startW=_resizeNode.width();_startH=_resizeNode.height();
+      _startNX=_resizeNode.x();_startNY=_resizeNode.y();
+      _bgRect=_resizeNode.findOne('.bgRect'); // cache for dragmove
+      const pp=this.stage.getPointerPosition();
+      _startX=pp.x;_startY=pp.y;
+      e.cancelBubble=true;
+    });
+    this.stage.on('dragmove',e=>{
+      if(!_resizing||!_resizeNode)return;
+      // Synchronous, lightweight: just update dimensions. No rAF, no ancillaries.
+      const pp=this.stage.getPointerPosition();
+      const dx=pp.x-_startX,dy=pp.y-_startY;
+      let nw=_startW,nh=_startH,nx=_startNX,ny=_startNY;
+      if(_resizing.includes('r'))nw=Math.max(100,_startW+dx);
+      if(_resizing.includes('l')){nw=Math.max(100,_startW-dx);nx=_startNX+dx}
+      if(_resizing.includes('b'))nh=Math.max(60,_startH+dy);
+      if(_resizing.includes('t')){nh=Math.max(60,_startH-dy);ny=_startNY+dy}
+      _resizeNode.setAttrs({width:nw,height:nh,x:nx,y:ny});
+      const d=this.st.nodes.find(n=>n.id===_resizeNode.id());
+      d.width=nw;d.height=nh;d.x=nx;d.y=ny;
+      if(_bgRect)_bgRect.setAttrs({width:nw,height:nh,cornerRadius:Math.min(16,Math.max(4,Math.min(nw,nh)*0.04))});
+    });
+    this.stage.on('dragend',e=>{
+      if(!_resizing||!_resizeNode)return;
+      const d=this.st.nodes.find(n=>n.id===_resizeNode.id());
+      d.width=Math.round(d.width/S)*S;d.height=Math.round(d.height/S)*S;
+      d.x=Math.round(d.x/S)*S;d.y=Math.round(d.y/S)*S;
+      _resizeNode.setAttrs({width:d.width,height:d.height,x:d.x,y:d.y});
+      _resizing=null;_resizeNode=null;_bgRect=null;
+      this.sync();this.record();updateAnchors();
+    });
+    // Update anchors when selection changes (called from click handler)
+    this._updateAnchors=updateAnchors;
+
+    // ---- DRAG (free movement during drag; grid snap ONLY on release) ----
+    this.stage.on('dragstart',e=>{
+      const t=e.target;
+      if(t.name()==='item-group'||t.name()==='node-group'){
+        const isNode=t.name()==='node-group';
+        const isLocked=isNode?(this.st.nodes.find(n=>n.id===t.id())?.locked):(this.st.items.find(i=>i.id===t.id())?.locked);
+        if(isLocked){e.target.stopDrag();return}
+        if(!isNode)this.dragId=t.id();
+      }
+    });
+    this.stage.on('dragmove',e=>{
+      if(e.target.name()==='item-group'&&this.dragId){
+        // Light hover detection only (no grid reflow during drag)
+        const it=this.st.items.find(i=>i.id===this.dragId);
+        if(it&&it.location_id){
+          const pg=this.stage.findOne('#'+it.location_id);
+          if(pg){
+            const pos=this.stage.getPointerPosition();
+            const rel=pg.getAbsoluteTransform().copy().invert().point(pos);
+            const pn=this.st.nodes.find(n=>n.id===it.location_id);
+            const cols=Math.max(1,Math.floor(((pn?.width||600)-24+8)/168));
+            let col=Math.round((rel.x-12)/168),row=Math.round((rel.y-40)/72);
+            col=Math.max(0,Math.min(col,cols-1));row=Math.max(0,row);
+            const slot=row*cols+col;
+            if(slot!==this.hSlot){
+              this.hSlot=slot;
+              clearTimeout(this.hTimer);
+              // Defer grid reflow until drag settles (200ms)
+              this.hTimer=setTimeout(()=>{
+                const cItems=this.st.items.filter(i=>i.location_id===pn.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+                const oi=cItems.indexOf(it);const ms=Math.min(slot,cItems.length-1);
+                if(oi>-1&&oi!==ms){cItems.splice(oi,1);cItems.splice(ms,0,it);cItems.forEach((ci,idx)=>ci.sort_order=idx);this.sync()}
+              },200);
+            }
+          }
+        }
+      }
+    });
+    this.stage.on('dragend',e=>{
+      if(e.target.name()==='item-group'){
+        this.dragId=null;clearTimeout(this.hTimer);
+        const it=this.st.items.find(i=>i.id===e.target.id());
+        if(it&&it.location_id){
+          // Snap item position to nearest grid slot
+          const pg=this.stage.findOne('#'+it.location_id);
+          const pn=this.st.nodes.find(n=>n.id===it.location_id);
+          if(pg&&pn){
+            const pos=e.target.absolutePosition();
+            const rel=pg.getAbsoluteTransform().copy().invert().point(pos);
+            const cols=Math.max(1,Math.floor((pn.width-24+8)/168));
+            let col=Math.round((rel.x-12)/168),row=Math.round((rel.y-40)/72);
+            col=Math.max(0,Math.min(col,cols-1));row=Math.max(0,row);
+            const slot=row*cols+col;
+            const cItems=this.st.items.filter(i=>i.location_id===pn.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+            const oi=cItems.indexOf(it);const ms=Math.min(slot,cItems.length-1);
+            if(oi>-1&&oi!==ms){cItems.splice(oi,1);cItems.splice(ms,0,it);cItems.forEach((ci,idx)=>ci.sort_order=idx)}
+          }
+        }else if(it&&!it.location_id){
+          const abs=this.stage.getAbsoluteTransform().copy().invert().point(e.target.absolutePosition());
+          it.x=Math.round(abs.x/S)*S;it.y=Math.round(abs.y/S)*S; // snap free items too
+        }
+        this.sync();this.record();
+      }
+      else if(e.target.name()==='node-group'){
+        const nd=this.st.nodes.find(n=>n.id===e.target.id());
+        const sX=Math.round(e.target.x()/S)*S,sY=Math.round(e.target.y()/S)*S;
+        e.target.position({x:sX,y:sY});nd.x=sX;nd.y=sY;
+        this.posCaps();this.record();
+      }
+    });
+
+    // ---- WHEEL ----
+    this.stage.on('wheel',e=>{
+      e.evt.preventDefault();const os=this.stage.scaleX();const pt=this.stage.getPointerPosition();if(!pt)return;
+      const mp={x:(pt.x-this.stage.x())/os,y:(pt.y-this.stage.y())/os};
+      const ns=e.evt.deltaY>0?os*0.9:os*1.1;if(ns<0.05||ns>5)return;
+      this.stage.scale({x:ns,y:ns});this.stage.position({x:pt.x-mp.x*ns,y:pt.y-mp.y*ns});this.upBg();
+      // Only update capsule scale+position; NO full scene rebuild!
+      const cs=ns<0.6?1/(ns*1.5):1/ns;this.cL.getChildren().forEach(cap=>cap.setAttrs({scaleX:cs,scaleY:cs}));
+      this._reqCaps();this._updateAnchors();this.saveViewState();
+    });
+
+    // ---- DBLCLICK IN-PLACE EDIT ----
+    this.stage.on('dblclick',e=>{
+      let t=e.target;
+      if(t.name()==='capsuleTxt'||t.name()==='capsuleBg'){const nid=t.getParent().id().replace('cap_','');const nd=this.st.nodes.find(n=>n.id===nid);if(nd){this.editingNid=nd.id;const inp=document.getElementById('inplace-editor');const cap=this.cL.findOne('#cap_'+nd.id);const ap=cap.absolutePosition();inp.style.display='block';inp.style.left=ap.x+'px';inp.style.top=ap.y+'px';inp.style.width=Math.max(160,cap.findOne('.capsuleBg').width()*cap.scaleX())+'px';inp.style.fontSize=(14*cap.scaleX())+'px';inp.value=nd.name;inp.focus();inp.select()}}
+    });
+
+    // ---- RIGHT-CLICK CONTEXT MENU ----
+    const ctxMenu=document.getElementById('ctx-menu');
+    let _ctxTarget=null;
+    ct.addEventListener('contextmenu',e=>{
+      e.preventDefault();e.stopPropagation();
+      const pt=this.stage.getPointerPosition();
+      if(!pt){return}
+      let t=this.stage.getIntersection(pt);
+      if(!t)return;
+      if(t.name()==='capsuleTxt'||t.name()==='capsuleBg'){const nid=t.getParent().id().replace('cap_','');t=this.stage.findOne('#'+nid)}
+      while(t&&!['node-group','item-group','bg'].includes(t.name()))t=t.parent;
+      if(!t||t.name()==='bg'){ctxMenu.style.display='none';return}
+      _ctxTarget=t;
+      const isNode=t.name()==='node-group';
+      const isLocked=isNode?(this.st.nodes.find(n=>n.id===t.id())?.locked):(this.st.items.find(i=>i.id===t.id())?.locked);
+      ctxMenu.querySelector('[data-action="lock"]').textContent=isLocked?'🔓 解锁':'🔒 锁定';
+      ctxMenu.querySelector('[data-action="rename"]').style.display=isNode?'':'none';
+      ctxMenu.style.display='block';ctxMenu.style.left=e.clientX+'px';ctxMenu.style.top=e.clientY+'px';
+    });
+    ctxMenu.querySelectorAll('.ctx-item').forEach(el=>{
+      el.addEventListener('click',()=>{
+        const action=el.dataset.action;
+        if(!_ctxTarget)return;
+        const isNode=_ctxTarget.name()==='node-group';
+        const id=_ctxTarget.id();
+        if(action==='lock'){
+          if(isNode){const nd=this.st.nodes.find(n=>n.id===id);if(nd){nd.locked=!nd.locked;this.sync();this.record()}}
+          else{const it=this.st.items.find(i=>i.id===id);if(it){it.locked=!it.locked;this.sync();this.record()}}
+        }else if(action==='rename'){
+          if(isNode){const nd=this.st.nodes.find(n=>n.id===id);if(nd){const inp=document.getElementById('inplace-editor');const ng=this.stage.findOne('#'+id);const ap=ng.absolutePosition();inp.style.display='block';inp.style.left=ap.x+'px';inp.style.top=ap.y+'px';inp.style.width='200px';inp.style.fontSize='14px';this.editingNid=id;inp.value=nd.name;inp.focus();inp.select()}}
+        }else if(action==='delete'){
+          if(isNode){this.st.nodes=this.st.nodes.filter(n=>n.id!==id);this.st.items.forEach(i=>{if(i.location_id===id)i.location_id=null});this.sel=[];this.tr.nodes([]);this.sync();this.record()}
+          else{this.st.items=this.st.items.filter(i=>i.id!==id);if(this.sel.includes(id)){this.sel=[];this.tr.nodes([])}this.sync();this.record()}
+        }
+        ctxMenu.style.display='none';_ctxTarget=null;
+      });
+    });
+    document.addEventListener('click',()=>{ctxMenu.style.display='none';_ctxTarget=null});
+
+    window.addEventListener('resize',()=>{this.stage.width(ct.clientWidth);this.stage.height(ct.clientHeight);this.upBg();this.updateArrowPos()});
+  }
+
+  // ---- KEY EVENTS (single registration) ----
+  bindEvts() {
+    window.addEventListener('keydown',e=>{
+      if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
+      if(e.code==='Space'){e.preventDefault();this.spPress=true;document.getElementById('konva-container').classList.add('grab');this.nL.listening(false);this.iL.listening(false);this.cL.listening(false)}
+      if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)this.redo();else this.undo()}
+      if((e.code==='Backspace'||e.code==='Delete')&&this.sel.length>0){e.preventDefault();const ids=[...this.sel];this.st.nodes=this.st.nodes.filter(n=>!ids.includes(n.id));this.st.items=this.st.items.filter(i=>!ids.includes(i.id));this.st.items.forEach(i=>{if(ids.includes(i.location_id))i.location_id=null});this.sel=[];this.tr.nodes([]);this.record()}
+    });
+    window.addEventListener('keyup',e=>{if(e.code==='Space'){this.spPress=false;document.getElementById('konva-container').classList.remove('grab','grabbing');this.nL.listening(true);this.iL.listening(true);this.cL.listening(true)}});
+
+    const inp=document.getElementById('inplace-editor');
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){const n=this.st.nodes.find(x=>x.id===this.editingNid);if(n&&inp.value.trim()!==n.name){n.name=inp.value.trim();this.record()}inp.style.display='none';this.editingNid=null;document.getElementById('konva-container').focus()}else if(e.key==='Escape'){inp.style.display='none';this.editingNid=null;document.getElementById('konva-container').focus()}});
+    inp.addEventListener('blur',()=>{inp.style.display='none';this.editingNid=null});
+
+    let resizing=false,_resizeRaf=null;
+    document.getElementById('panel-resize').addEventListener('mousedown',e=>{resizing=true;document.body.style.cursor='ew-resize';e.preventDefault()});
+    window.addEventListener('mousemove',e=>{if(resizing&&!_resizeRaf){_resizeRaf=requestAnimationFrame(()=>{_resizeRaf=null;const p=document.getElementById('side-panel');if(p.classList.contains('fullscreen'))return;const w=window.innerWidth-e.clientX;if(w>540&&w<window.innerWidth-80){p.style.width=w+'px';p.style.minWidth='';}this.stage.width(document.getElementById('konva-container').clientWidth);this.updateArrowPos()})}});
+    window.addEventListener('mouseup',()=>{resizing=false;document.body.style.cursor='';this.saveViewState()});
+  }
+
+  upBg(){} // dots on Konva layer - no CSS updates needed
+  // ============ SYNC (RENDER) ============
+  // Throttled: multiple sync() calls within one frame → single render
+  _syncPending=null;
+  sync() {
+    if(this._syncPending)return;
+    this._syncPending=requestAnimationFrame(()=>{this._syncPending=null;this._doSync()});
+  }
+  _doSync() {
+    if(!this.stage)return;const sc=this.stage.scaleX(),lod=sc<0.4;
+    // Build node lookup map once (avoid repeated findOne)
+    const nodeMap=new Map();this.st.nodes.forEach(n=>nodeMap.set(n.id,n));
+    
+    // --- 1. NODES (reuse, don't recreate) ---
+    const an=new Set();
+    const sn=[...this.st.nodes].sort((a,b)=>(b.width*b.height)-(a.width*a.height));
+    sn.forEach(n=>{
+      an.add(n.id);let g=this.stage.findOne('#'+n.id);
+      const st=NODE_S[n.type]||NODE_S['容器'];const isS=this.sel.includes(n.id);
+      const pr=Math.min(16,Math.max(4,Math.min(n.width,n.height)*0.04));
+      if(!g){g=new Konva.Group({id:n.id,name:'node-group',draggable:true});g.add(new Konva.Rect({name:'bgRect',strokeScaleEnabled:false}));this.nL.add(g);
+        // clipFunc set ONCE — reads live width/height, never redefined
+        ((node)=>g.clipFunc(function(ctx){ctx.roundRect(0,0,node.width(),node.height(),Math.min(16,Math.max(4,Math.min(node.width(),node.height())*0.04)))}))(g);
+      }
+      if(n.parentId){const pg=this.stage.findOne('#'+n.parentId);if(pg&&g.parent!==pg)g.moveTo(pg)}
+      else{if(g.parent!==this.nL)g.moveTo(this.nL)}
+      g.setAttrs({x:n.x,y:n.y,width:n.width,height:n.height});
+      g.findOne('.bgRect').setAttrs({width:n.width,height:n.height,fill:st.bg,cornerRadius:pr,stroke:isS?'#3b82f6':st.st,strokeWidth:isS?2.5:st.sw});
+    });
+    // Lazy cleanup: only destroy truly orphaned every ~10 calls
+    if(!this._cleanCount)this._cleanCount=0;
+    if(++this._cleanCount>10){this._cleanCount=0;
+      this.nL.getChildren().forEach(c=>{if(c.name()==='node-group'&&!an.has(c.id()))c.destroy()});
+      this.nL.getChildren().forEach(c=>{if(c.name()==='node-group'){const kids=c.getChildren().slice();kids.forEach(nc=>{if(nc.name()==='node-group'&&!an.has(nc.id()))nc.destroy()})}});
+    }
+    
+    // --- 2. CAPSULES (reuse; batchDraw only when text changed) ---
+    this.st.nodes.forEach(n=>{
+      let cap=this.cL.findOne('#cap_'+n.id);let needRedraw=false;
+      const st=NODE_S[n.type]||NODE_S['容器'];
+      if(!cap){cap=new Konva.Group({id:'cap_'+n.id,name:'capsule-group',listening:true});cap.add(new Konva.Rect({name:'capsuleBg',cornerRadius:6,shadowColor:'rgba(0,0,0,0.06)',shadowBlur:4,shadowOffsetY:2,strokeScaleEnabled:false}));cap.add(new Konva.Text({name:'capsuleTxt',fontSize:14,fontStyle:'600',padding:6}));this.cL.add(cap);needRedraw=true}
+      const txt=cap.findOne('.capsuleTxt');
+      if(txt.text()!==n.name){txt.setAttrs({text:n.name,fill:st.ct});needRedraw=true}
+      const cs=sc<0.6?1/(sc*1.5):1/sc;cap.setAttrs({scaleX:cs,scaleY:cs});
+      if(needRedraw){cap.findOne('.capsuleBg').setAttrs({width:txt.width(),height:txt.height(),fill:st.cb,stroke:st.st,strokeWidth:1});this.cL.batchDraw()}
+    });
+    // Capsule cleanup (lazy)
+    this.cL.getChildren().forEach(c=>{if(c.name()==='capsule-group'&&!nodeMap.has(c.id().replace('cap_','')))c.destroy()});
+    this.posCaps();
+    
+    // --- 3. GRID ENGINE ---
+    this.st.nodes.forEach(n=>{
+      const ci=this.st.items.filter(i=>i.location_id===n.id).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+      ci.forEach((it,idx)=>{it.sort_order=idx});
+    });
+    
+    // --- 4. ITEMS (reuse; position immediately, no Tween) ---
+    const absGet=(nid)=>{
+      const n=nodeMap.get(nid);
+      if(!n)return{x:0,y:0};
+      if(!n.parentId)return{x:n.x,y:n.y};
+      const p=absGet(n.parentId);
+      return{x:p.x+n.x,y:p.y+n.y};
+    };
+    const ai=new Set(),fi=this.filtItems();
+    fi.forEach(i=>{
+      ai.add(i.id);let g=this.stage.findOne('#'+i.id);const isS=this.sel.includes(i.id);
+      const iW=160,iH=64,isIdle=i.status==='闲置待处理';
+      if(!g){
+        g=new Konva.Group({id:i.id,name:'item-group',width:iW,height:iH,draggable:true});
+        g.add(new Konva.Rect({name:'base',width:iW,height:iH,fill:'#fff',cornerRadius:6,strokeScaleEnabled:false}));
+        g.add(new Konva.Circle({name:'lodDot',x:iW/2,y:iH/2,radius:10,strokeScaleEnabled:false}));
+        const ic=new Konva.Group({name:'imgGroup',x:8,y:8,clipFunc:ctx=>ctx.roundRect(0,0,48,48,4)});
+        ic.add(new Konva.Rect({name:'imgPlh',width:48,height:48,fill:'#f1f5f9'}));
+        ic.add(new Konva.Text({name:'imgIcon',text:'📷',x:16,y:16,fontSize:16}));
+        ic.add(new Konva.Image({name:'imgReal',visible:false}));g.add(ic);
+        g.add(new Konva.Text({name:'tName',x:64,y:10,fontSize:13,fontStyle:'600',fill:'#1e293b',listening:false}));
+        g.add(new Konva.Text({name:'tCode',x:64,y:28,fontSize:10,fontFamily:'monospace',fill:'#64748b',listening:false}));
+        g.add(new Konva.Circle({name:'sDot',x:68,y:46,radius:4,listening:false}));
+        g.add(new Konva.Text({name:'sTxt',x:76,y:42,fontSize:10,listening:false}));
+      }
+      if(g.parent!==this.iL)g.moveTo(this.iL);
+      if(i.id!==this.dragId){
+        if(i.location_id){
+          const np=absGet(i.location_id);
+          const pn=nodeMap.get(i.location_id);const cols=Math.max(1,Math.floor(((pn?.width||600)-24+8)/168));
+          const idx=i.sort_order||0;
+          g.position({x:np.x+12+(idx%cols)*168,y:np.y+40+Math.floor(idx/cols)*72});
+        }else{g.position({x:i.x,y:i.y})}
+      }
+      g.findOne('.base').setAttrs({stroke:isS?'#3b82f6':'#e2e8f0',strokeWidth:isS?2:1,shadowColor:isS?'rgba(59,130,246,0.3)':'rgba(0,0,0,0.06)',shadowBlur:isS?0:4,shadowOffsetY:isS?0:2,visible:!lod});
+      g.findOne('.lodDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:lod,stroke:isS?'#000':null,strokeWidth:2});
+      g.findOne('.imgGroup').visible(!lod);
+      let nt=i.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';
+      g.findOne('.tName').setAttrs({text:nt,visible:!lod});
+      g.findOne('.tCode').setAttrs({text:i.item_code,visible:!lod});
+      g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:!lod});
+      g.findOne('.sTxt').setAttrs({text:i.status||'常用',fill:isIdle?'#ef4444':'#166534',visible:!lod});
+      if(i.image&&!lod){
+        const ir=g.findOne('.imgReal');
+        if(this.icache[i.image]){const io=this.icache[i.image];const s=Math.max(48/io.width,48/io.height);ir.setAttrs({image:io,width:io.width*s,height:io.height*s,x:(48-io.width*s)/2,y:(48-io.height*s)/2,visible:true});g.findOne('.imgIcon').visible(false)}
+        else{ir.visible(false);g.findOne('.imgIcon').visible(true);if(!this.icache['ld_'+i.image]){this.icache['ld_'+i.image]=true;const img=new Image();img.src=`/uploads/${i.image}`;img.onload=()=>{this.icache[i.image]=img;this.sync()}}}
+      }else{g.findOne('.imgReal').visible(false);g.findOne('.imgIcon').visible(true)}
+    });
+    this.iL.getChildren().forEach(c=>{if(c.name()==='item-group'&&!ai.has(c.id()))c.destroy()});
+    this.tr.moveToTop();
+    this._updateAnchors();
+  }
+
+  // ---- POSITION CAPSULES ---- (Use screen coords directly, bypass transform chain)
+  // ---- Reposition items on itemLayer (absolute coords — items NEVER in node-group) ----
+  reposItems(nd) {
+    if(!nd)return;
+    const absGet=(nid)=>{
+      const n=this.st.nodes.find(x=>x.id===nid);
+      if(!n)return{x:0,y:0};
+      if(!n.parentId)return{x:n.x,y:n.y};
+      const p=absGet(n.parentId);
+      return{x:p.x+n.x,y:p.y+n.y};
+    };
+    // Process this node AND all descendant nodes recursively
+    const processNode=(nid)=>{
+      const np=absGet(nid);
+      const pn=this.st.nodes.find(n=>n.id===nid);
+      if(!pn)return;
+      const cItems=this.st.items.filter(i=>i.location_id===nid).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+      const cols=Math.max(1,Math.floor((pn.width-24+8)/168));
+      cItems.forEach((it,idx)=>{
+        it.sort_order=idx;
+        it._gx=np.x+12+(idx%cols)*168;
+        it._gy=np.y+40+Math.floor(idx/cols)*72;
+        const g=this.stage.findOne('#'+it.id);
+        if(g&&it.id!==this.dragId){
+          if(g.parent!==this.iL)g.moveTo(this.iL);
+          const dx=it._gx-g.x(),dy=it._gy-g.y();
+          if(Math.abs(dx)>1||Math.abs(dy)>1)new Konva.Tween({node:g,duration:0.2,x:it._gx,y:it._gy,easing:Konva.Easings.EaseOut}).play();
+        }
+      });
+      // Recurse into child node-groups
+      this.st.nodes.filter(n=>n.parentId===nid).forEach(cn=>processNode(cn.id));
+    };
+    processNode(nd.id());
+  }
+
+  _capsRaf=null;
+  _reqCaps(){if(!this._capsRaf)this._capsRaf=requestAnimationFrame(()=>{this._capsRaf=null;this.posCaps()})}
+  posCaps() {
+    if(!this.cL)return;
+    this.cL.getChildren().forEach(cap=>{
+      const nid=cap.id().replace('cap_','');
+      const ng=this.stage.findOne('#'+nid);
+      if(ng){
+        const ap=ng.absolutePosition(); // screen coords of node's top-left
+        const ch=cap.findOne('.capsuleBg').height(); // visual height on screen (capScale * stageScale = 1)
+        cap.absolutePosition({x:ap.x+8,y:ap.y-ch-4});
+      }
+    });
+  }
+}
+
+// ============ INITIALIZE ============
+const app=new App();
+
+// File upload handler
+document.getElementById('fileInput').addEventListener('change',async function(e){
+  if(!this.files.length||!app.upId)return;
+  const f=this.files[0];const it=app.st.items.find(x=>x.id===app.upId);
+  const blob=URL.createObjectURL(f);const img=new Image();img.src=blob;
+  img.onload=()=>{app.icache['tmp_'+app.upId]=img;it.image='tmp_'+app.upId;app.sync();app.rT()};
+  const fd=new FormData();fd.append('image',f);
+  const res=await fetch('/api/upload/'+app.upId,{method:'POST',body:fd});
+  const data=await res.json();it.image=data.image;
+  const rImg=new Image();rImg.src='/uploads/'+data.image;
+  rImg.onload=()=>{app.icache[data.image]=rImg;app.sync();app.rT();app.record()};
+  this.value='';
+});
+</script>
+</body>
+</html>

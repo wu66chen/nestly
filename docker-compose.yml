@@ -1,0 +1,12 @@
+services:
+  room-inventory:
+    image: room-inventory:latest
+    container_name: room-inventory
+    ports:
+      - "8089:8088"
+    volumes:
+      - room_data:/data
+    restart: unless-stopped
+
+volumes:
+  room_data:

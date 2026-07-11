@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pro Inventory - 个人物品管理</title>
+<title>Nestly</title>
 <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
@@ -233,7 +233,7 @@ class App {
     clearTimeout(this._svsTimer);
     this._svsTimer=setTimeout(()=>{
       const p=document.getElementById('side-panel');
-      localStorage.setItem('pro_inv_view',JSON.stringify({
+      localStorage.setItem('nestly_view',JSON.stringify({
         stageX:this.stage.x(),stageY:this.stage.y(),stageScale:this.stage.scaleX(),
         panelW:p.classList.contains('fullscreen')?0:parseInt(p.style.width)||0
       }));
@@ -253,7 +253,7 @@ class App {
       this.undoing=true;this.hist=[JSON.stringify(this.st)];this.hi=0;this.undoing=false;
       this.uUI();this.rT();this.sync();this.updateArrowPos();
       // Restore saved view state
-      const vs=localStorage.getItem('pro_inv_view');
+      const vs=localStorage.getItem('nestly_view');
       if(vs){const v=JSON.parse(vs);
         if(v.stageX!==undefined)this.stage.x(v.stageX);
         if(v.stageY!==undefined)this.stage.y(v.stageY);

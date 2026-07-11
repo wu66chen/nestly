@@ -1,4 +1,4 @@
-# Pro Inventory — 个人物品管理系统
+# Nestly
 
 > 无限画布 · 层级空间 · 专业级交互
 
@@ -6,7 +6,7 @@
 
 ## 截图
 
-![screenshot](https://via.placeholder.com/800x500/f8fafc/64748b?text=Pro+Inventory+Screenshot)
+![screenshot](https://via.placeholder.com/800x500/f8fafc/64748b?text=Nestly+Screenshot)
 
 ## 功能
 
@@ -52,8 +52,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/wu66chen/pro-inventory.git
-cd pro-inventory
+git clone https://github.com/wu66chen/nestly.git
+cd nestly
 
 # 启动
 docker compose up -d
@@ -65,11 +65,11 @@ docker compose up -d
 
 ```bash
 # 将文件上传到 NAS
-scp -r ./* user@nas-ip:/tmp/zfuse/docker/pro-inventory/
+scp -r ./* user@nas-ip:/tmp/zfuse/docker/nestly/
 
 # SSH 到 NAS 执行
 ssh user@nas-ip
-cd /tmp/zfuse/docker/pro-inventory
+cd /tmp/zfuse/docker/nestly
 sg docker -c 'docker compose up -d'
 ```
 
@@ -80,8 +80,8 @@ sg docker -c 'docker compose up -d'
 ```bash
 # 编码并上传
 cat templates/index.html | base64 > /tmp/index.b64
-ssh user@nas-ip "base64 -d > /tmp/zfuse/docker/pro-inventory/templates/index.html"
-ssh user@nas-ip "sg docker -c 'docker cp /tmp/zfuse/docker/pro-inventory/templates/index.html pro-inventory:/app/templates/index.html && docker restart pro-inventory'"
+ssh user@nas-ip "base64 -d > /tmp/zfuse/docker/nestly/templates/index.html"
+ssh user@nas-ip "sg docker -c 'docker cp /tmp/zfuse/docker/nestly/templates/index.html nestly:/app/templates/index.html && docker restart nestly'"
 ```
 
 ## 交互手册
@@ -101,7 +101,7 @@ ssh user@nas-ip "sg docker -c 'docker cp /tmp/zfuse/docker/pro-inventory/templat
 ## 文件结构
 
 ```
-pro-inventory/
+nestly/
 ├── app.py              # Flask 后端 (API + SQLite)
 ├── templates/
 │   └── index.html      # 前端 (Konva.js 画布 + 数据表)
@@ -110,3 +110,4 @@ pro-inventory/
 ├── docker-compose.yml
 ├── requirements.txt
 └── README.md
+```

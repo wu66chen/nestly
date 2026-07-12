@@ -13,7 +13,7 @@
   #konva-container{position:relative;width:100%;height:100%;background:#fafbfc;outline:none}
   #konva-container.grab{cursor:grab!important}
   #konva-container.grabbing{cursor:grabbing!important}
-  .fixed-ui{position:absolute;z-index:10;pointer-events:none}
+  .fixed-ui{position:absolute;z-index:20;pointer-events:none}
   .fixed-ui>*{pointer-events:auto}
   .view-switcher{top:16px;left:50%;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
   .view-tab{padding:6px 16px;font-size:13px;font-weight:500;color:#64748b;border-radius:6px;cursor:pointer;white-space:nowrap}
@@ -27,14 +27,14 @@
   .guide-panel.collapsed{transform:translateY(150%)}
   .guide-close{cursor:pointer;color:#94a3b8}
   .guide-close:hover{color:#1e293b}
-  .side-panel{top:56px;right:16px;bottom:16px;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);border:1px solid #e2e8f0;display:flex;flex-direction:column;width:30%;min-width:540px;transition:right .4s cubic-bezier(.16,1,.3,1)}
+  .side-panel{top:16px;right:16px;bottom:16px;z-index:9;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);border:1px solid #e2e8f0;display:flex;flex-direction:column;width:30%;min-width:540px;transition:right .4s cubic-bezier(.16,1,.3,1)}
   .side-panel.collapsed{right:calc(-30% + 16px)}
   .side-panel.fullscreen{left:16px;right:16px;width:auto;max-width:unset;bottom:16px;top:72px}
   .side-panel.fullscreen .resize-handle{display:none}
   .resize-handle{position:absolute;left:-4px;top:0;bottom:0;width:8px;cursor:ew-resize;z-index:20}
   .input-ghost{border:1px solid transparent;background:transparent;padding:4px 6px;border-radius:4px;font-size:inherit;width:100%;outline:none}
   .input-ghost:hover{border-color:#cbd5e1;background:#fff}
-  .input-ghost:focus{background:#fff;border-color:var(--pri);box-shadow:0 0 0 3px var(--ring)}
+  .input-ghost:focus{border-color:var(--pri);box-shadow:0 0 0 3px var(--ring)}.rt-trigger:focus+button{display:block!important}
   .custom-select{width:100%;border:1px solid transparent;background:transparent;border-radius:4px;padding:4px 6px;cursor:pointer;outline:none;display:flex;justify-content:space-between;align-items:center}
   .custom-select:hover{border-color:#cbd5e1;background:#fff}
   .custom-select.active{background:#fff;border-color:var(--pri);box-shadow:0 0 0 3px var(--ring)}
@@ -59,12 +59,12 @@
   .ctx-item{padding:8px 12px;border-radius:4px;cursor:pointer;color:#334155;white-space:nowrap}
   .ctx-item:hover{background:#f1f5f9}
   /* Marquee for selected long item names */
-  @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
-  .marquee{overflow:hidden;white-space:nowrap}
-  .marquee-inner{display:inline-block;animation:marquee 4s linear infinite}
+  @keyframes marquee{0%{transform:translateX(0)}80%,100%{transform:translateX(calc(-100% + 120px))}}
+  .marquee-wrap{overflow:hidden;white-space:nowrap;width:90px;display:inline-block;vertical-align:top}
+  .marquee-inner{display:inline-block;animation:marquee 3s ease-in-out infinite;padding-right:20px}
   /* Image viewer lightbox */
   .img-lightbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;cursor:zoom-out}
-  .img-lightbox img{max-width:90vw;max-height:90vh;object-fit:contain;cursor:move}
+  .img-lightbox img{max-width:95vw;max-height:95vh;object-fit:contain;cursor:grab;transition:transform .1s}.img-lightbox img.dragging{cursor:grabbing}
   .img-lightbox .lb-close{position:absolute;top:16px;right:16px;width:40px;height:40px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;cursor:pointer}
   .img-lightbox .lb-replace{position:absolute;bottom:16px;right:16px;padding:8px 16px;background:rgba(255,255,255,.2);border-radius:8px;color:#fff;cursor:pointer;font-size:13px}
   /* Delete confirm */
@@ -169,6 +169,18 @@
   <div class="lb-close" onclick="app.closeLightbox()">✕</div>
   <div class="lb-replace" onclick="event.stopPropagation();app.replaceImg()">替换图片</div>
   <img id="lb-img" src="" draggable="false">
+</div>
+
+<!-- Rich Text Editor Modal -->
+<div id="rt-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.3);align-items:center;justify-content:center" onclick="this.style.display='none'">
+  <div style="background:#fff;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:520px;max-height:80vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+    <div style="padding:12px 16px;border-bottom:1px solid #e2e8f0;font-weight:600;display:flex;justify-content:space-between;align-items:center"><span id="rt-title">编辑</span><button onclick="const m=document.getElementById('rt-modal');m.style.display='none';if(m._detailDiv){m._detailDiv.style.display='none';m._detailDiv.innerHTML=''};document.getElementById('rt-textarea').style.display=''" style="border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:16px">✕</button></div>
+    <textarea id="rt-textarea" style="flex:1;border:none;outline:none;padding:16px;font-size:14px;resize:none;min-height:200px;font-family:inherit;line-height:1.6"></textarea>
+    <div style="padding:12px 16px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="const m=document.getElementById('rt-modal');m.style.display='none';if(m._detailDiv){m._detailDiv.style.display='none';m._detailDiv.innerHTML=''};document.getElementById('rt-textarea').style.display=''" style="padding:8px 16px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;cursor:pointer">取消</button>
+      <button id="rt-save" style="padding:8px 16px;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">保存</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -278,7 +290,7 @@ class App {
       _nextItemCode=codes.length?Math.max(...codes)+1:1;
       this.undoing=true;this.hist=[JSON.stringify(this.st)];this.hi=0;this.undoing=false;
       this.uUI();this.rT();this.sync();this.updateArrowPos();
-      // Restore saved view state
+      // Restore saved view state (delayed to prevent flicker)
       const vs=localStorage.getItem('nestly_view');
       if(vs){const v=JSON.parse(vs);
         if(v.stageX!==undefined)this.stage.x(v.stageX);
@@ -406,7 +418,7 @@ class App {
         h+=g.items.map(i=>{
           const sel=this.sel.includes(i.id)?'selected':'';
           const{l1,l2,l3,l4}=this.getH(i.location_id);
-          return`<tr class="item-row ${sel}" data-id="${i.id}" onclick="app.rowClick('${i.id}',event)"><td><div class="img-upload-box" onclick="event.stopPropagation();${i.image?`app.openLightbox('${i.id}')`:`app.trigUp('${i.id}')`}">${i.image?`<img src="/uploads/${i.image}">`:'<span style="color:#cbd5e1;font-size:16px">📷</span>'}</div></td><td><div style="font-size:11px;color:#64748b;font-family:monospace">${i.item_code}</div></td><td style="position:relative"><input class="input-ghost" style="font-weight:500;color:#1e293b;padding-right:24px" value="${i.name||''}" onchange="app.upItem('${i.id}','name',this.value)"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','name')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:10px;padding:2px" title="富文本编辑">✎</button></td><td><div class="custom-select" data-id="${i.id}" data-field="category">${i.category||'请选择'}</div></td><td><input class="input-ghost" value="${l1?l1.name:''}" placeholder="房间" onchange="app.hInput('${i.id}',1,this.value)"></td><td><input class="input-ghost" value="${l2?l2.name:''}" placeholder="位置" onchange="app.hInput('${i.id}',2,this.value)" ${l1?'':'disabled'}></td><td><input class="input-ghost" value="${l3?l3.name:''}" placeholder="容器" onchange="app.hInput('${i.id}',3,this.value)" ${l2?'':'disabled'}></td><td><input class="input-ghost" value="${l4?l4.name:''}" placeholder="子容器" onchange="app.hInput('${i.id}',4,this.value)" ${l3?'':'disabled'}></td><td><div class="custom-select ${i.status==='闲置待处理'?'badge-idle':'badge-active'}" data-id="${i.id}" data-field="status">${i.status||'常用'}</div></td><td><input type="number" min="1" class="input-ghost" value="${i.quantity||1}" onchange="app.upItem('${i.id}','quantity',this.value)"></td><td><input class="input-ghost" value="${i.notes||''}" placeholder="..." onchange="app.upItem('${i.id}','notes',this.value)"></td><td><button onclick="app.toggleMore('${i.id}');event.stopPropagation()" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 2px;border-radius:4px;font-size:11px" title="更多信息">⋯</button><button data-del="${i.id}" onclick="event.stopPropagation();app.delConfirm('${i.id}')" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 8px;border-radius:4px">✖</button></td></tr>`;
+          return`<tr class="item-row ${sel}" data-id="${i.id}" onclick="app.rowClick('${i.id}',event)"><td><div class="img-upload-box" onclick="event.stopPropagation();${i.image?`app.openLightbox('${i.id}')`:`app.trigUp('${i.id}')`}">${i.image?`<img src="/uploads/${i.image}">`:'<span style="color:#cbd5e1;font-size:16px">📷</span>'}</div></td><td><div style="font-size:11px;color:#64748b;font-family:monospace">${i.item_code}</div></td><td style="position:relative"><input class="input-ghost rt-trigger" style="font-weight:500;color:#1e293b;padding-right:24px" value="${i.name||''}" onchange="app.upItem('${i.id}','name',this.value)" onfocus="this.nextElementSibling.style.display='block'" onblur="setTimeout(()=>this.nextElementSibling.style.display='none',200)"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','name')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#93c5fd;cursor:pointer;font-size:10px;padding:2px;display:none" title="富文本编辑">✎</button></td><td><div class="custom-select" data-id="${i.id}" data-field="category">${i.category||'请选择'}</div></td><td><input class="input-ghost" value="${l1?l1.name:''}" placeholder="房间" onchange="app.hInput('${i.id}',1,this.value)"></td><td><input class="input-ghost" value="${l2?l2.name:''}" placeholder="位置" onchange="app.hInput('${i.id}',2,this.value)" ${l1?'':'disabled'}></td><td><input class="input-ghost" value="${l3?l3.name:''}" placeholder="容器" onchange="app.hInput('${i.id}',3,this.value)" ${l2?'':'disabled'}></td><td><input class="input-ghost" value="${l4?l4.name:''}" placeholder="子容器" onchange="app.hInput('${i.id}',4,this.value)" ${l3?'':'disabled'}></td><td><div class="custom-select ${i.status==='闲置待处理'?'badge-idle':'badge-active'}" data-id="${i.id}" data-field="status">${i.status||'常用'}</div></td><td><input type="number" min="1" class="input-ghost" value="${i.quantity||1}" onchange="app.upItem('${i.id}','quantity',this.value)"></td><td><input class="input-ghost" value="${i.notes||''}" placeholder="..." onchange="app.upItem('${i.id}','notes',this.value)"></td><td><button onclick="app.openDetail('${i.id}');event.stopPropagation()" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 2px;border-radius:4px;font-size:11px" title="更多信息">⋯</button><button data-del="${i.id}" onclick="event.stopPropagation();app.delConfirm('${i.id}')" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 8px;border-radius:4px">✖</button></td></tr>`;
         }).join('');
       }
     });
@@ -434,12 +446,17 @@ class App {
 
   trigUp(id){this.upId=id;document.getElementById('fileInput').click()}
 
-  _lbId=null;
+  _lbId=null;_lbScale=1;_lbPanX=0;_lbPanY=0;
   openLightbox(id){
     const it=this.st.items.find(i=>i.id===id);
     if(!it||!it.image)return;
-    this._lbId=id;
-    document.getElementById('lb-img').src='/uploads/'+it.image;
+    this._lbId=id;this._lbScale=1;this._lbPanX=0;this._lbPanY=0;
+    const img=document.getElementById('lb-img');img.src='/uploads/'+it.image;
+    img.style.transform='';img.onwheel=e=>{e.preventDefault();this._lbScale=Math.max(.5,Math.min(5,this._lbScale+(e.deltaY>0?-.2:.2)));img.style.transform=`scale(${this._lbScale})`};
+    let drag=false,sX,sY;img.onmousedown=e=>{drag=true;sX=e.clientX-this._lbPanX;sY=e.clientY-this._lbPanY;img.classList.add('dragging')};
+    window.onmousemove=e=>{if(drag){this._lbPanX=e.clientX-sX;this._lbPanY=e.clientY-sY;img.style.transform=`translate(${this._lbPanX}px,${this._lbPanY}px) scale(${this._lbScale})`}};
+    window.onmouseup=()=>{drag=false;img.classList.remove('dragging')};
+    img.ondblclick=e=>{this._lbScale=1;this._lbPanX=0;this._lbPanY=0;img.style.transform=''};
     document.getElementById('img-lightbox').style.display='flex';
   }
   closeLightbox(){document.getElementById('img-lightbox').style.display='none';this._lbId=null}
@@ -469,10 +486,40 @@ class App {
   upExtra(id,k,v){const it=this.st.items.find(i=>i.id===id);if(it){if(!it.extra)it.extra={};it.extra[k]=v;this.record()}}
   delExtra(id,k){const it=this.st.items.find(i=>i.id===id);if(it&&it.extra){delete it.extra[k];this.rT();this.record()}}
 
+  _rtId=null;_rtField=null;
   openRichEdit(id,field){
     const it=this.st.items.find(i=>i.id===id);if(!it)return;
-    const v=prompt(`编辑 ${field}:`,it[field]||'');
-    if(v!==null){it[field]=v;this.rT();this.record()}
+    this._rtId=id;this._rtField=field;
+    document.getElementById('rt-title').textContent='编辑 '+field;
+    document.getElementById('rt-textarea').value=it[field]||'';
+    document.getElementById('rt-modal').style.display='flex';
+    document.getElementById('rt-save').onclick=()=>{
+      it[field]=document.getElementById('rt-textarea').value;
+      const m=document.getElementById('rt-modal');m.style.display='none';if(m._detailDiv){m._detailDiv.style.display='none';m._detailDiv.innerHTML=''};document.getElementById('rt-textarea').style.display='';
+      this.rT();this.record();
+    };
+  }
+  // Record detail panel (Feishu-style)
+  openDetail(id){
+    const it=this.st.items.find(i=>i.id===id);if(!it)return;
+    if(!it.extra)it.extra={};
+    let h=`<div style="padding:16px;display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow-y:auto">`;
+    const fields=[['编号','item_code',true],['名称','name',false],['分类','category',false],['状态','status',false],['数量','quantity',false],['备注','notes',false]];
+    fields.forEach(([l,f,ro])=>{h+=`<div><div style="font-size:11px;color:#94a3b8;margin-bottom:2px">${l}</div><input style="width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;font-size:14px;outline:none" value="${it[f]||''}" onchange="app.upItem('${id}','${f}',this.value)" ${ro?'readonly':''}></div>`});
+    // Extra fields
+    const keys=Object.keys(it.extra);
+    keys.forEach(k=>{h+=`<div><div style="font-size:11px;color:#94a3b8;margin-bottom:2px;display:flex;justify-content:space-between">${k}<button onclick="app.delExtra('${id}','${k}');app.openDetail('${id}')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;font-size:11px">删除</button></div><input style="width:100%;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;font-size:14px;outline:none" value="${it.extra[k]||''}" onchange="app.upExtra('${id}','${k}',this.value)"></div>`});
+    h+=`<button onclick="const k=prompt('新字段名');if(k){app.upExtra('${id}',k,'');app.openDetail('${id}')}" style="border:1px dashed #cbd5e1;border-radius:6px;padding:8px;font-size:13px;color:#64748b;cursor:pointer;background:transparent;width:100%">+ 添加字段</button>`;
+    h+=`</div>`;
+    document.getElementById('rt-title').textContent=it.name||'详情';
+    document.getElementById('rt-textarea').style.display='none';
+    const modal=document.getElementById('rt-modal');
+    const content=modal.querySelector('div > div:last-child');
+    // Store detail content
+    if(!modal._detailDiv){modal._detailDiv=document.createElement('div');modal.querySelector('div').insertBefore(modal._detailDiv,modal.querySelector('div').lastElementChild)}
+    modal._detailDiv.innerHTML=h;modal._detailDiv.style.display='block';
+    modal.style.display='flex';
+    document.getElementById('rt-save').onclick=()=>{modal.style.display='none';modal._detailDiv.style.display='none';document.getElementById('rt-textarea').style.display='';this.rT()};
   }
 
   // Header persistence
@@ -777,7 +824,7 @@ class App {
       if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
       if(e.code==='Space'){e.preventDefault();this.spPress=true;document.getElementById('konva-container').classList.add('grab');this.nL.listening(false);this.iL.listening(false);this.cL.listening(false)}
       if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)this.redo();else this.undo()}
-      if((e.code==='Backspace'||e.code==='Delete')&&this.sel.length>0){e.preventDefault();const ids=[...this.sel];this.st.nodes=this.st.nodes.filter(n=>!ids.includes(n.id));this.st.items=this.st.items.filter(i=>!ids.includes(i.id));this.st.items.forEach(i=>{if(ids.includes(i.location_id))i.location_id=null});this.sel=[];this.tr.nodes([]);this.record()}
+      if((e.code==='Backspace'||e.code==='Delete')&&this.sel.length>0&&!['INPUT','TEXTAREA'].includes(e.target.tagName)&&!e.target.isContentEditable){e.preventDefault();const ids=[...this.sel];this.st.nodes=this.st.nodes.filter(n=>!ids.includes(n.id));this.st.items=this.st.items.filter(i=>!ids.includes(i.id));this.st.items.forEach(i=>{if(ids.includes(i.location_id))i.location_id=null});this.sel=[];this.tr.nodes([]);this.record()}
     });
     window.addEventListener('keyup',e=>{if(e.code==='Space'){this.spPress=false;document.getElementById('konva-container').classList.remove('grab','grabbing');this.nL.listening(true);this.iL.listening(true);this.cL.listening(true)}});
 
@@ -885,11 +932,14 @@ class App {
       g.findOne('.lodDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:lod,stroke:isS?'#000':null,strokeWidth:2});
       g.findOne('.imgGroup').visible(!lod);
       let nt=i.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';
-      g.findOne('.tName').setAttrs({text:nt,visible:!lod});
-      // Marquee for selected long names
-      if(isS&&nt!==(i.name||'')&&(i.name||'').length>7){
-        g.findOne('.tName').setAttrs({text:i.name||''});
-        // Use CSS animation via wrapper
+      const fullName=i.name||'';const isLong=fullName.length>7;
+      g.findOne('.tName').setAttrs({text:isS&&isLong?fullName:nt,visible:!lod});
+      // Clip long names on canvas when selected to prevent overflow
+      if(isS&&isLong){
+        const tn=g.findOne('.tName');tn.clipFunc(function(ctx){ctx.rect(0,0,90,16)});
+        tn.setAttrs({x:64,y:10});
+      }else{
+        g.findOne('.tName').clipFunc(null);
       }
       g.findOne('.tCode').setAttrs({text:i.item_code,visible:!lod});
       g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:!lod});

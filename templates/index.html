@@ -289,7 +289,7 @@ class App {
       const codes=this.st.items.map(i=>parseInt((i.item_code||'0').replace('ITM-',''))).filter(n=>!isNaN(n));
       _nextItemCode=codes.length?Math.max(...codes)+1:1;
       this.undoing=true;this.hist=[JSON.stringify(this.st)];this.hi=0;this.undoing=false;
-      this.uUI();this.rT();this.sync();this.updateArrowPos();
+      this.uUI();this.rT();this.sync();this.sync();this.updateArrowPos();
       // Restore saved view state (delayed to prevent flicker)
       const vs=localStorage.getItem('nestly_view');
       if(vs){const v=JSON.parse(vs);
@@ -315,13 +315,16 @@ class App {
     },800);
   }
 
+  _rtPending=null;
   record() {
     if(this.undoing)return;
     const s=JSON.stringify(this.st);
     if(this.hi>=0&&this.hist[this.hi]===s)return;
     this.hist=this.hist.slice(0,this.hi+1);this.hist.push(s);this.hi++;
     if(this.hist.length>50){this.hist.shift();this.hi--}
-    this.uUI();this.save();this.sync();this.rT();
+    this.uUI();this.save();this.sync();
+    // Debounce table re-render
+    if(!this._rtPending)this._rtPending=setTimeout(()=>{this._rtPending=null;this.rT()},150);
   }
 
   uUI() {
@@ -407,6 +410,7 @@ class App {
 
   // ---- TABLE ----
   rT() {
+    clearTimeout(this._rtPending);this._rtPending=null;
     const itms=this.filtItems();
     document.getElementById('item-count').textContent=`(共${itms.length}件)`;
     const gm=new Map();
@@ -598,7 +602,7 @@ class App {
     // Dot pattern canvas (GPU-composited with stage, zero CSS overhead)
     const dc=document.createElement('canvas');dc.width=20;dc.height=20;
     dc.getContext('2d').fillStyle='#cbd5e1';dc.getContext('2d').beginPath();dc.getContext('2d').arc(10,10,1,0,Math.PI*2);dc.getContext('2d').fill();
-    const bgL=new Konva.Layer({name:'bgL'});
+    const bgL=new Konva.Layer({name:'bgL',listening:false});
     bgL.add(new Konva.Rect({x:-50000,y:-50000,width:100000,height:100000,fillPatternImage:dc,fillPatternRepeat:'repeat',name:'bg'}));
     this.stage.add(bgL);
 
@@ -890,11 +894,17 @@ class App {
     // Build node lookup map once (avoid repeated findOne)
     const nodeMap=new Map();this.st.nodes.forEach(n=>nodeMap.set(n.id,n));
     
+    // --- 0. VIEWPORT CULLING ---
+    const vp={l:-this.stage.x()/sc-200,t:-this.stage.y()/sc-200,r:(-this.stage.x()+this.stage.width())/sc+200,b:(-this.stage.y()+this.stage.height())/sc+200};
+    const inView=n=>n.x+n.width>vp.l&&n.x<vp.r&&n.y+n.height>vp.t&&n.y<vp.b;
+
     // --- 1. NODES (reuse, don't recreate) ---
     const an=new Set();
     const sn=[...this.st.nodes].sort((a,b)=>(b.width*b.height)-(a.width*a.height));
     sn.forEach(n=>{
-      an.add(n.id);let g=this.stage.findOne('#'+n.id);
+      an.add(n.id);
+      // Cull off-screen node groups (keep visible for structure)
+      let g=this.stage.findOne('#'+n.id);
       const st=NODE_S[n.type]||NODE_S['容器'];const isS=this.sel.includes(n.id);
       const pr=Math.min(16,Math.max(4,Math.min(n.width,n.height)*0.04));
       if(!g){g=new Konva.Group({id:n.id,name:'node-group',draggable:true});g.add(new Konva.Rect({name:'bgRect',strokeScaleEnabled:false}));this.nL.add(g);
@@ -942,8 +952,17 @@ class App {
       return{x:p.x+n.x,y:p.y+n.y};
     };
     const ai=new Set(),fi=this.filtItems();
+    let visCount=0;
     fi.forEach(i=>{
-      ai.add(i.id);let g=this.stage.findOne('#'+i.id);const isS=this.sel.includes(i.id);
+      ai.add(i.id);
+      // Viewport culling: skip items far outside view
+      if(i.location_id){
+        const pn=nodeMap.get(i.location_id);
+        if(pn){const cols=Math.max(1,Math.floor((pn.width-24+8)/168));const idx=i.sort_order||0;
+        const iy=pn.y+40+Math.floor(idx/cols)*72;const ix=pn.x+12+(idx%cols)*168;
+        if(ix+160<vp.l||ix>vp.r||iy+64<vp.t||iy>vp.b){visCount++;if(visCount>30){let g=this.stage.findOne('#'+i.id);if(g)g.visible(false);return}}}
+      }else{if(i.x+160<vp.l||i.x>vp.r||i.y+64<vp.t||i.y>vp.b){visCount++;if(visCount>30){let g=this.stage.findOne('#'+i.id);if(g)g.visible(false);return}}}
+      let g=this.stage.findOne('#'+i.id);const isS=this.sel.includes(i.id);
       const iW=160,iH=64,isIdle=i.status==='闲置待处理';
       if(!g){
         g=new Konva.Group({id:i.id,name:'item-group',width:iW,height:iH,draggable:true});
@@ -1010,7 +1029,7 @@ class App {
         // Use group-level clip instead (move tName into a clip group)
       }
     },this.tL);
-    this._marqueeAnim.start();this._marqueeAnim.stop();
+    /* marquee starts on demand */
   }
 
   // ---- POSITION CAPSULES ---- (Use screen coords directly, bypass transform chain)

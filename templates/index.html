@@ -15,8 +15,8 @@
   #konva-container.grabbing{cursor:grabbing!important}
   .fixed-ui{position:absolute;z-index:30;pointer-events:none}
   .fixed-ui>*{pointer-events:auto}
-  .view-switcher{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0;z-index:999!important};transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
-  .view-tab{padding:6px 14px;font-size:13px;font-weight:500;border-radius:6px;cursor:pointer;white-space:nowrap;color:#64748b;transition:none}
+  .view-switcher{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:6px;gap:2px;border-radius:14px;box-shadow:0 6px 16px -4px rgba(0,0,0,.1);border:1px solid #e2e8f0;z-index:999!important}
+  .view-tab{padding:8px 20px;font-size:14px;font-weight:500;border-radius:8px;cursor:pointer;white-space:nowrap;color:#64748b;transition:background 0.15s}
   .view-tab:hover{color:#1e293b}
   .view-tab.active{background:#eff6ff;color:#3b82f6;box-shadow:0 1px 2px rgba(0,0,0,.05)}
   .toolbar-top{top:16px;left:16px;display:flex;gap:8px;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:6px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);border:1px solid #e2e8f0}
@@ -99,6 +99,7 @@
 <!-- View Switcher -->
 <div class="fixed-ui view-switcher">
   <div class="view-tab active" data-view="split" onclick="app.switchView('split')">分屏协作</div>
+  <div style="width:1px;height:18px;background:#e2e8f0;margin:0 4px"></div>
   <div class="view-tab" data-view="table" onclick="app.switchView('table')">全屏数据表</div>
 </div>
 
@@ -195,7 +196,7 @@ const NODE_S = {
 const CATS = ['衣物','书籍文件','电子产品','日用品','收藏/纪念品','工具','其他'];
 const STATS = ['常用','偶尔','闲置待处理'];
 const SORTS = [{l:'最新创建 ▲',v:'id-desc'},{l:'最新创建 ▼',v:'id-asc'},{l:'编号升序',v:'code-asc'},{l:'编号降序',v:'code-desc'},{l:'名称 A-Z',v:'name-asc'},{l:'名称 Z-A',v:'name-desc'},{l:'数量多→少',v:'qty-desc'},{l:'数量少→多',v:'qty-asc'}];
-let _nextItemCode=1;_codePrefix='ITM-';
+let _nextItemCode=1;_codePrefix=localStorage.getItem('nestly_prefix')||'ITM-';
 const GID = () => 'id_'+Math.random().toString(36).substr(2,9);
 
 // Force 1x pixel ratio — cuts GPU fill-rate by 4x on Retina for ~3x smoother rendering
@@ -463,7 +464,20 @@ class App {
   delItem(id){this.st.items=this.st.items.filter(i=>i.id!==id);if(this.sel.includes(id)){this.sel=[];this.tr.nodes([])}this.record()}
 
   trigUp(id){this.upId=id;document.getElementById('fileInput').click()}
-  setCodePrefix(){const p=prompt('编号前缀:',_codePrefix);if(p!==null){_codePrefix=p;this.rT();this.record()}}
+  setCodePrefix(){
+    const p=prompt('编号前缀:',_codePrefix);
+    if(p!==null && p!==_codePrefix){
+      const oldP = _codePrefix;
+      _codePrefix=p;
+      localStorage.setItem('nestly_prefix', p);
+      this.st.items.forEach(i=>{
+        if(i.item_code && i.item_code.startsWith(oldP)){
+          i.item_code = p + i.item_code.substring(oldP.length);
+        }
+      });
+      this.rT();this.sync();this.record();
+    }
+  }
 
   _lbId=null;_lbScale=1;_lbPanX=0;_lbPanY=0;
   openLightbox(id){

@@ -27,7 +27,7 @@
   .guide-panel.collapsed{transform:translateY(150%)}
   .guide-close{cursor:pointer;color:#94a3b8}
   .guide-close:hover{color:#1e293b}
-  .side-panel{top:16px;right:16px;bottom:16px;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);border:1px solid #e2e8f0;display:flex;flex-direction:column;width:30%;min-width:540px;transition:right .4s cubic-bezier(.16,1,.3,1)}
+  .side-panel{top:56px;right:16px;bottom:16px;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);border:1px solid #e2e8f0;display:flex;flex-direction:column;width:30%;min-width:540px;transition:right .4s cubic-bezier(.16,1,.3,1)}
   .side-panel.collapsed{right:calc(-30% + 16px)}
   .side-panel.fullscreen{left:16px;right:16px;width:auto;max-width:unset;bottom:16px;top:72px}
   .side-panel.fullscreen .resize-handle{display:none}
@@ -58,6 +58,23 @@
   .img-upload-box img{width:100%;height:100%;object-fit:cover}
   .ctx-item{padding:8px 12px;border-radius:4px;cursor:pointer;color:#334155;white-space:nowrap}
   .ctx-item:hover{background:#f1f5f9}
+  /* Marquee for selected long item names */
+  @keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+  .marquee{overflow:hidden;white-space:nowrap}
+  .marquee-inner{display:inline-block;animation:marquee 4s linear infinite}
+  /* Image viewer lightbox */
+  .img-lightbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;cursor:zoom-out}
+  .img-lightbox img{max-width:90vw;max-height:90vh;object-fit:contain;cursor:move}
+  .img-lightbox .lb-close{position:absolute;top:16px;right:16px;width:40px;height:40px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;cursor:pointer}
+  .img-lightbox .lb-replace{position:absolute;bottom:16px;right:16px;padding:8px 16px;background:rgba(255,255,255,.2);border-radius:8px;color:#fff;cursor:pointer;font-size:13px}
+  /* Delete confirm */
+  .del-confirm{color:#fff!important;background:#ef4444!important;border-radius:4px!important;padding:4px 8px!important}
+  /* More info expand */
+  .more-row{background:#f8fafc}
+  .more-row td{padding:8px 12px!important}
+  .kv-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .kv-row input{border:1px solid #e2e8f0;border-radius:4px;padding:4px 8px;font-size:12px;outline:none}
+  .kv-row input:focus{border-color:var(--pri)}
   #inplace-editor{position:absolute;z-index:100;display:none;background:#fff;border:2px solid var(--pri);border-radius:8px;padding:6px 12px;outline:none;font-family:inherit;font-weight:600;box-shadow:0 10px 15px -3px rgba(0,0,0,.1)}
   kbd{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;padding:1px 5px;font-size:12px}
 </style>
@@ -139,13 +156,20 @@
   </div>
   <div class="table-wrapper">
     <table id="data-table">
-      <thead><tr><th style="width:48px"><div class="hdr-inp" contenteditable="true">图片</div></th><th style="width:80px"><div class="hdr-inp" contenteditable="true">编号</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">名称</div></th><th style="width:70px"><div class="hdr-inp" contenteditable="true">分类</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">房间(1级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">位置(2级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">容器(3级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">子容器(4级)</div></th><th style="width:60px"><div class="hdr-inp" contenteditable="true">状态</div></th><th style="width:50px"><div class="hdr-inp" contenteditable="true">数量</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">备注</div></th><th style="width:40px"><div class="hdr-inp" style="color:#94a3b8">操作</div></th></tr></thead>
+      <thead><tr onblur="app._saveHeaders()" oninput="app._saveHeaders()"><th style="width:48px"><div class="hdr-inp" contenteditable="true">图片</div></th><th style="width:80px"><div class="hdr-inp" contenteditable="true">编号</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">名称</div></th><th style="width:70px"><div class="hdr-inp" contenteditable="true">分类</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">房间(1级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">位置(2级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">容器(3级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">子容器(4级)</div></th><th style="width:60px"><div class="hdr-inp" contenteditable="true">状态</div></th><th style="width:50px"><div class="hdr-inp" contenteditable="true">数量</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">备注</div></th><th style="width:40px"><div class="hdr-inp" style="color:#94a3b8">操作</div></th></tr></thead>
       <tbody id="table-body"></tbody>
     </table>
   </div>
 </div>
 
 <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+<!-- Image Lightbox -->
+<div class="img-lightbox" id="img-lightbox" onclick="app.closeLightbox()">
+  <div class="lb-close" onclick="app.closeLightbox()">✕</div>
+  <div class="lb-replace" onclick="event.stopPropagation();app.replaceImg()">替换图片</div>
+  <img id="lb-img" src="" draggable="false">
+</div>
 
 <script>
 // ============ CONSTANTS ============
@@ -184,6 +208,8 @@ class App {
     this.bindEvts();
     this.initDD();
     this.load();
+    // Load saved headers after DOM is ready
+    setTimeout(()=>this._loadHeaders(),100);
 
     if(localStorage.getItem('guideClosed')==='1') document.getElementById('guide-panel').classList.add('collapsed');
   }
@@ -380,7 +406,7 @@ class App {
         h+=g.items.map(i=>{
           const sel=this.sel.includes(i.id)?'selected':'';
           const{l1,l2,l3,l4}=this.getH(i.location_id);
-          return`<tr class="item-row ${sel}" data-id="${i.id}" onclick="app.rowClick('${i.id}',event)"><td><div class="img-upload-box" onclick="app.trigUp('${i.id}')">${i.image?`<img src="/uploads/${i.image}">`:'<span style="color:#cbd5e1;font-size:16px">📷</span>'}</div></td><td><div style="font-size:11px;color:#64748b;font-family:monospace">${i.item_code}</div></td><td><input class="input-ghost" style="font-weight:500;color:#1e293b" value="${i.name||''}" onchange="app.upItem('${i.id}','name',this.value)"></td><td><div class="custom-select" data-id="${i.id}" data-field="category">${i.category||'请选择'}</div></td><td><input class="input-ghost" value="${l1?l1.name:''}" placeholder="房间" onchange="app.hInput('${i.id}',1,this.value)"></td><td><input class="input-ghost" value="${l2?l2.name:''}" placeholder="位置" onchange="app.hInput('${i.id}',2,this.value)" ${l1?'':'disabled'}></td><td><input class="input-ghost" value="${l3?l3.name:''}" placeholder="容器" onchange="app.hInput('${i.id}',3,this.value)" ${l2?'':'disabled'}></td><td><input class="input-ghost" value="${l4?l4.name:''}" placeholder="子容器" onchange="app.hInput('${i.id}',4,this.value)" ${l3?'':'disabled'}></td><td><div class="custom-select ${i.status==='闲置待处理'?'badge-idle':'badge-active'}" data-id="${i.id}" data-field="status">${i.status||'常用'}</div></td><td><input type="number" min="1" class="input-ghost" value="${i.quantity||1}" onchange="app.upItem('${i.id}','quantity',this.value)"></td><td><input class="input-ghost" value="${i.notes||''}" placeholder="..." onchange="app.upItem('${i.id}','notes',this.value)"></td><td><button onclick="app.delItem('${i.id}');event.stopPropagation()" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 8px;border-radius:4px">✖</button></td></tr>`;
+          return`<tr class="item-row ${sel}" data-id="${i.id}" onclick="app.rowClick('${i.id}',event)"><td><div class="img-upload-box" onclick="event.stopPropagation();${i.image?`app.openLightbox('${i.id}')`:`app.trigUp('${i.id}')`}">${i.image?`<img src="/uploads/${i.image}">`:'<span style="color:#cbd5e1;font-size:16px">📷</span>'}</div></td><td><div style="font-size:11px;color:#64748b;font-family:monospace">${i.item_code}</div></td><td style="position:relative"><input class="input-ghost" style="font-weight:500;color:#1e293b;padding-right:24px" value="${i.name||''}" onchange="app.upItem('${i.id}','name',this.value)"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','name')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:10px;padding:2px" title="富文本编辑">✎</button></td><td><div class="custom-select" data-id="${i.id}" data-field="category">${i.category||'请选择'}</div></td><td><input class="input-ghost" value="${l1?l1.name:''}" placeholder="房间" onchange="app.hInput('${i.id}',1,this.value)"></td><td><input class="input-ghost" value="${l2?l2.name:''}" placeholder="位置" onchange="app.hInput('${i.id}',2,this.value)" ${l1?'':'disabled'}></td><td><input class="input-ghost" value="${l3?l3.name:''}" placeholder="容器" onchange="app.hInput('${i.id}',3,this.value)" ${l2?'':'disabled'}></td><td><input class="input-ghost" value="${l4?l4.name:''}" placeholder="子容器" onchange="app.hInput('${i.id}',4,this.value)" ${l3?'':'disabled'}></td><td><div class="custom-select ${i.status==='闲置待处理'?'badge-idle':'badge-active'}" data-id="${i.id}" data-field="status">${i.status||'常用'}</div></td><td><input type="number" min="1" class="input-ghost" value="${i.quantity||1}" onchange="app.upItem('${i.id}','quantity',this.value)"></td><td><input class="input-ghost" value="${i.notes||''}" placeholder="..." onchange="app.upItem('${i.id}','notes',this.value)"></td><td><button onclick="app.toggleMore('${i.id}');event.stopPropagation()" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 2px;border-radius:4px;font-size:11px" title="更多信息">⋯</button><button data-del="${i.id}" onclick="event.stopPropagation();app.delConfirm('${i.id}')" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 8px;border-radius:4px">✖</button></td></tr>`;
         }).join('');
       }
     });
@@ -407,6 +433,57 @@ class App {
   delItem(id){this.st.items=this.st.items.filter(i=>i.id!==id);if(this.sel.includes(id)){this.sel=[];this.tr.nodes([])}this.record()}
 
   trigUp(id){this.upId=id;document.getElementById('fileInput').click()}
+
+  _lbId=null;
+  openLightbox(id){
+    const it=this.st.items.find(i=>i.id===id);
+    if(!it||!it.image)return;
+    this._lbId=id;
+    document.getElementById('lb-img').src='/uploads/'+it.image;
+    document.getElementById('img-lightbox').style.display='flex';
+  }
+  closeLightbox(){document.getElementById('img-lightbox').style.display='none';this._lbId=null}
+  replaceImg(){if(this._lbId){this.upId=this._lbId;document.getElementById('fileInput').click()}}
+
+  // Delete confirmation
+  delConfirm(id){
+    const btn=document.querySelector(`button[data-del="${id}"]`);
+    if(!btn)return;
+    if(btn.classList.contains('del-confirm')){this.st.items=this.st.items.filter(i=>i.id!==id);if(this.sel.includes(id)){this.sel=[];this.tr.nodes([])}this.sync();this.record()}
+    else{btn.textContent='确认删除';btn.classList.add('del-confirm');btn.dataset.confirming='1';setTimeout(()=>{if(btn.dataset.confirming==='1'){btn.textContent='✖';btn.classList.remove('del-confirm');btn.dataset.confirming='0'}},3000)}
+  }
+
+  // More info expand
+  toggleMore(id){
+    const row=document.getElementById('more-'+id);
+    if(row)row.remove();
+    else{this.rT();const tr=document.querySelector(`tr[data-id="${id}"]`);if(tr){const extra=document.createElement('tr');extra.className='more-row';extra.id='more-'+id;
+      const it=this.st.items.find(i=>i.id===id);if(!it)return;
+      if(!it.extra)it.extra={};
+      let h='<td colspan="12"><div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
+      const keys=Object.keys(it.extra);
+      keys.forEach(k=>{h+=`<div class="kv-row"><span style="font-size:11px;color:#64748b">${k}:</span><input value="${it.extra[k]||''}" onchange="app.upExtra('${id}','${k}',this.value)"><button onclick="app.delExtra('${id}','${k}')" style="border:none;background:transparent;color:#94a3b8;cursor:pointer">✖</button></div>`});
+      h+=`<button onclick="const k=prompt('新字段名');if(k){app.upExtra('${id}',k,'')}" style="border:1px dashed #cbd5e1;border-radius:4px;padding:4px 8px;font-size:12px;color:#64748b;cursor:pointer;background:transparent">+ 添加字段</button>`;
+      h+='</div></td>';extra.innerHTML=h;tr.after(extra)}}
+  }
+  upExtra(id,k,v){const it=this.st.items.find(i=>i.id===id);if(it){if(!it.extra)it.extra={};it.extra[k]=v;this.record()}}
+  delExtra(id,k){const it=this.st.items.find(i=>i.id===id);if(it&&it.extra){delete it.extra[k];this.rT();this.record()}}
+
+  openRichEdit(id,field){
+    const it=this.st.items.find(i=>i.id===id);if(!it)return;
+    const v=prompt(`编辑 ${field}:`,it[field]||'');
+    if(v!==null){it[field]=v;this.rT();this.record()}
+  }
+
+  // Header persistence
+  _saveHeaders(){
+    const hdrs={};document.querySelectorAll('.hdr-inp[contenteditable]').forEach(el=>{const th=el.closest('th');if(th){const idx=Array.from(th.parentElement.children).indexOf(th);hdrs[idx]=el.textContent}});
+    localStorage.setItem('nestly_headers',JSON.stringify(hdrs));
+  }
+  _loadHeaders(){
+    const raw=localStorage.getItem('nestly_headers');if(!raw)return;
+    const hdrs=JSON.parse(raw);document.querySelectorAll('.hdr-inp[contenteditable]').forEach((el,i)=>{if(hdrs[i])el.textContent=hdrs[i]});
+  }
 
   // ---- DROPDOWN ----
   initDD() {
@@ -646,6 +723,9 @@ class App {
     // ---- DBLCLICK IN-PLACE EDIT ----
     this.stage.on('dblclick',e=>{
       let t=e.target;
+      while(t&&!['item-group'].includes(t.name()))t=t.parent;
+      if(t&&t.name()==='item-group'){const it=this.st.items.find(i=>i.id===t.id());if(it&&it.image){this.openLightbox(it.id);return}}
+      t=e.target;
       if(t.name()==='capsuleTxt'||t.name()==='capsuleBg'){const nid=t.getParent().id().replace('cap_','');const nd=this.st.nodes.find(n=>n.id===nid);if(nd){this.editingNid=nd.id;const inp=document.getElementById('inplace-editor');const cap=this.cL.findOne('#cap_'+nd.id);const ap=cap.absolutePosition();inp.style.display='block';inp.style.left=ap.x+'px';inp.style.top=ap.y+'px';inp.style.width=Math.max(160,cap.findOne('.capsuleBg').width()*cap.scaleX())+'px';inp.style.fontSize=(14*cap.scaleX())+'px';inp.value=nd.name;inp.focus();inp.select()}}
     });
 
@@ -806,6 +886,11 @@ class App {
       g.findOne('.imgGroup').visible(!lod);
       let nt=i.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';
       g.findOne('.tName').setAttrs({text:nt,visible:!lod});
+      // Marquee for selected long names
+      if(isS&&nt!==(i.name||'')&&(i.name||'').length>7){
+        g.findOne('.tName').setAttrs({text:i.name||''});
+        // Use CSS animation via wrapper
+      }
       g.findOne('.tCode').setAttrs({text:i.item_code,visible:!lod});
       g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:!lod});
       g.findOne('.sTxt').setAttrs({text:i.status||'常用',fill:isIdle?'#ef4444':'#166534',visible:!lod});

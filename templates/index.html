@@ -15,10 +15,10 @@
   #konva-container.grabbing{cursor:grabbing!important}
   .fixed-ui{position:absolute;z-index:30;pointer-events:none}
   .fixed-ui>*{pointer-events:auto}
-  .view-switcher{top:16px;left:50%;transform:translateX(-50%);display:flex;background:#fff;border-radius:8px;box-shadow:0 2px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0;overflow:hidden};transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
-  .view-tab{padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;color:#64748b;transition:all .2s}
-  .view-tab:hover{color:#1e293b;background:#f1f5f9}
-  .view-tab.active{background:#eff6ff;color:#2563eb;font-weight:600}
+  .view-switcher{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-radius:10px;box-shadow:0 4px 16px -4px rgba(0,0,0,.08),0 0 0 1px rgba(0,0,0,.04);overflow:hidden};transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
+  .view-tab{padding:7px 18px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;color:#64748b;transition:all .15s ease;letter-spacing:.01em}
+  .view-tab:first-child{border-right:1px solid #e2e8f0}.view-tab:hover{color:#0f172a;background:#f8fafc}
+  .view-tab.active{background:#eff6ff;color:#2563eb;font-weight:600;box-shadow:inset 0 1px 2px rgba(59,130,246,.08)}
   .toolbar-top{top:16px;left:16px;display:flex;gap:8px;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:6px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);border:1px solid #e2e8f0}
   .btn-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:none;background:transparent;cursor:pointer;color:#475569}
   .btn-icon:hover{background:#f1f5f9;color:#0f172a}
@@ -1018,8 +1018,11 @@ class App {
       if(i.image&&!lod){
         const ir=g.findOne('.imgReal');
         if(this.icache[i.image]){const io=this.icache[i.image];const s=Math.max(48/io.width,48/io.height);ir.setAttrs({image:io,width:io.width*s,height:io.height*s,x:(48-io.width*s)/2,y:(48-io.height*s)/2,visible:true});g.findOne('.imgIcon').visible(false)}
-        else{ir.visible(false);g.findOne('.imgIcon').visible(true);if(!this.icache['ld_'+i.image]){this.icache['ld_'+i.image]=true;const img=new Image();img.src=`/uploads/${i.image}`;img.onload=()=>{this.icache[i.image]=img;this.sync()}}}
+        else{ir.visible(false);g.findOne('.imgIcon').visible(true);if(!this.icache['ld_'+i.image]){this.icache['ld_'+i.image]=true;const img=new Image();img.src=`/uploads/${i.image}`;img.onload=()=>{this.icache[i.image]=img;this._imgLoadCnt=(this._imgLoadCnt||0)+1};img.onerror=()=>{this._imgLoadCnt=(this._imgLoadCnt||0)+1}}}
       }else{g.findOne('.imgReal').visible(false);g.findOne('.imgIcon').visible(true)}
+    // Batch image sync: only redraw once after all queued images load
+    if(this._imgLoadTimer)clearTimeout(this._imgLoadTimer);
+    if(this._imgLoadCnt>0)this._imgLoadTimer=setTimeout(()=>{this._imgLoadCnt=0;this.sync()},100);
     });
     this.iL.getChildren().forEach(c=>{if(c.name()==='item-group'&&!ai.has(c.id()))c.destroy()});
     this.tr.moveToTop();

@@ -105,14 +105,17 @@
 
 <!-- Toolbar -->
 <div class="fixed-ui toolbar-top">
-  <button class="btn-icon" onclick="app.undo()" id="btn-undo" title="撤销 Ctrl+Z">
+  <button onclick="app.undo()" id="btn-undo" title="撤销 Ctrl+Z" class="btn-icon">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
   </button>
-  <button class="btn-icon" onclick="app.redo()" id="btn-redo" title="重做 Ctrl+Shift+Z">
+  <button onclick="app.redo()" id="btn-redo" title="重做 Ctrl+Shift+Z" class="btn-icon">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/></svg>
   </button>
-  <div style="width:1px;height:24px;background:#e2e8f0;align-self:center"></div>
-  <div style="display:flex;align-items:center;padding:0 8px;font-size:12px;font-weight:500;color:#64748b" id="sync-status">已同步</div>
+  <div style="width:1px;height:24px;background:#e2e8f0;align-self:center;margin:0 4px"></div>
+  <button onclick="window.location.href='/api/export'" title="导出数据库" class="btn-icon" style="font-size:14px">📥</button>
+  <button onclick="document.getElementById('importInput').click()" title="导入数据库" class="btn-icon" style="font-size:14px">📤</button>
+  <div style="width:1px;height:24px;background:#e2e8f0;align-self:center;margin:0 4px"></div>
+  <div style="font-size:12px;font-weight:500;color:#64748b" id="sync-status">已同步</div>
 </div>
 
 <!-- Guide Toggle -->
@@ -164,6 +167,18 @@
 </div>
 
 <input type="file" id="fileInput" accept="image/*" style="display:none">
+<input type="file" id="importInput" accept=".zip" style="display:none" onchange="
+  if(!this.files.length)return;
+  if(!confirm('导入将覆盖当前所有数据，确认导入吗？'))return;
+  const el=document.getElementById('sync-status');
+  el.textContent='导入中...';el.style.color='#3b82f6';
+  const fd=new FormData();fd.append('backup',this.files[0]);
+  fetch('/api/import',{method:'POST',body:fd}).then(r=>r.json()).then(d=>{
+    if(d.success)window.location.reload();
+    else{alert('导入失败');el.textContent='导入失败';el.style.color='#ef4444'}
+  }).catch(e=>{alert('导入失败');el.textContent='导入失败';el.style.color='#ef4444'});
+  this.value='';
+">
 
 <!-- Image Lightbox -->
 <div class="img-lightbox" id="img-lightbox" onclick="app.closeLightbox()">

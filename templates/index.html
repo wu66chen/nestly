@@ -15,7 +15,7 @@
   #konva-container.grabbing{cursor:grabbing!important}
   .fixed-ui{position:absolute;z-index:20;pointer-events:none}
   .fixed-ui>*{pointer-events:auto}
-  .view-switcher{top:16px;left:50%;z-index:50!important;transform:translateX(-50%);transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
+  .view-switcher{position:relative;top:0;z-index:50!important;transform:translateX(-50%);transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
   .view-tab{padding:6px 16px;font-size:13px;font-weight:500;color:#64748b;border-radius:6px;cursor:pointer;white-space:nowrap}
   .view-tab:hover{color:#1e293b}
   .view-tab.active{background:#eff6ff;color:var(--pri);box-shadow:0 1px 2px rgba(0,0,0,.05)}
@@ -246,7 +246,12 @@ class App {
   togglePanel() {
     const p=document.getElementById('side-panel');
     p.classList.toggle('collapsed');
-    this.updateArrowPos();
+    // Force arrow update without RAF loop delay
+    const tg=document.getElementById('panel-toggle-btn');
+    if(!tg)return;
+    const pr=p.getBoundingClientRect();
+    tg.style.left=(pr.left-36)+'px';tg.style.top=(pr.top+16)+'px';tg.style.right='auto';
+    tg.style.display=p.classList.contains('collapsed')?'flex':'flex';
     // rAF loop during CSS transition (0.4s ≈ 24 frames) — zero delay, arrow "grows on" panel
     let frames=0;const track=()=>{this.updateArrowPos();if(frames++<30)requestAnimationFrame(track)};
     requestAnimationFrame(track);
@@ -996,12 +1001,12 @@ class App {
       }
       g.findOne('.base').setAttrs({stroke:isS?'#3b82f6':'#e2e8f0',strokeWidth:isS?2:1,shadowColor:isS?'rgba(59,130,246,0.3)':'rgba(0,0,0,0.06)',shadowBlur:isS?0:4,shadowOffsetY:isS?0:2,visible:!lod});
       g.findOne('.lodDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:lod,stroke:isS?'#000':null,strokeWidth:2});
-      g.findOne('.imgGroup').visible(!lod);
+      g.findOne('.imgGroup').visible(showDetail);
       let nt=i.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';
-      const tnGrp=g.findOne('.tNameGrp');const tnText=tnGrp?tnGrp.findOne('.tName'):null;if(tnText)tnText.setAttrs({text:isS&&(i.name||'').length>7?(i.name||''):nt});if(tnGrp)tnGrp.visible(!lod);
-      g.findOne('.tCode').setAttrs({text:i.item_code,visible:!lod});
-      g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:!lod});
-      g.findOne('.sTxt').setAttrs({text:i.status||'常用',fill:isIdle?'#ef4444':'#166534',visible:!lod});
+      const tnGrp=g.findOne('.tNameGrp');const tnText=tnGrp?tnGrp.findOne('.tName'):null;if(tnText)tnText.setAttrs({text:isS&&(i.name||'').length>7?(i.name||''):nt});if(tnGrp)tnGrp.visible(showDetail);
+      g.findOne('.tName').setAttrs({text:nt,visible:showDetail});
+      g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:true});
+      g.findOne('.sTxt').setAttrs({text:i.status||'常用',fill:isIdle?'#ef4444':'#166534',visible:true});
       if(i.image&&!lod){
         const ir=g.findOne('.imgReal');
         if(this.icache[i.image]){const io=this.icache[i.image];const s=Math.max(48/io.width,48/io.height);ir.setAttrs({image:io,width:io.width*s,height:io.height*s,x:(48-io.width*s)/2,y:(48-io.height*s)/2,visible:true});g.findOne('.imgIcon').visible(false)}

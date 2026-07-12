@@ -959,6 +959,7 @@ class App {
     fi.forEach(i=>{
       ai.add(i.id);
       // Viewport culling: skip items far outside view
+      const isS=this.sel.includes(i.id);
       // Always process items if they're selected or being dragged
       let outOfView=false;
       if(i.location_id){
@@ -968,7 +969,7 @@ class App {
         outOfView=ix+160<vp.l||ix>vp.r||iy+64<vp.t||iy>vp.b}
       }else{outOfView=i.x+160<vp.l||i.x>vp.r||i.y+64<vp.t||i.y>vp.b}
       if(outOfView&&!isS&&i.id!==this.dragId){visCount++;if(visCount>20){let g=this.stage.findOne('#'+i.id);if(g)g.visible(false);return}}
-      let g=this.stage.findOne('#'+i.id);const isS=this.sel.includes(i.id);
+      let g=this.stage.findOne('#'+i.id);
       const iW=160,iH=64,isIdle=i.status==='闲置待处理';
       if(!g){
         g=new Konva.Group({id:i.id,name:'item-group',width:iW,height:iH,draggable:true});

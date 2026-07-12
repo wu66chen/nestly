@@ -15,10 +15,10 @@
   #konva-container.grabbing{cursor:grabbing!important}
   .fixed-ui{position:absolute;z-index:30;pointer-events:none}
   .fixed-ui>*{pointer-events:auto}
-  .view-switcher{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-radius:12px;box-shadow:0 4px 16px -4px rgba(0,0,0,.08),0 0 0 1px rgba(0,0,0,.04);overflow:hidden};transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
-  .view-tab{padding:10px 24px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;color:#64748b;transition:all .15s ease}
-  .view-tab:first-child{border-right:1px solid #e2e8f0}.view-tab:hover{color:#0f172a;background:#f8fafc}
-  .view-tab.active{background:#eff6ff;color:#2563eb;font-weight:600}
+  .view-switcher{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0;z-index:999!important};transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
+  .view-tab{padding:6px 14px;font-size:13px;font-weight:500;border-radius:6px;cursor:pointer;white-space:nowrap;color:#64748b;transition:none}
+  .view-tab:hover{color:#1e293b}
+  .view-tab.active{background:#eff6ff;color:#3b82f6;box-shadow:0 1px 2px rgba(0,0,0,.05)}
   .toolbar-top{top:16px;left:16px;display:flex;gap:8px;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:6px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);border:1px solid #e2e8f0}
   .btn-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:none;background:transparent;cursor:pointer;color:#475569}
   .btn-icon:hover{background:#f1f5f9;color:#0f172a}
@@ -826,13 +826,13 @@ class App {
       requestAnimationFrame(()=>{
         this.iL.getChildren().forEach(g=>{if(g.name()==='item-group'){
           const vis=!newLod;
-          const bg=g.findOne('.bgCard');if(bg)bg.visible(vis);
+          const base=g.findOne('.base');if(base)base.visible(vis);
+          const ld=g.findOne('.lodDot');if(ld)ld.visible(newLod);
           const ig=g.findOne('.imgGroup');if(ig)ig.visible(vis);
-          const tn=g.findOne('.tName');if(tn&&tn.parent&&tn.parent.name()==='tNameGrp')tn.parent.visible(vis);else if(tn)tn.visible(vis);
+          const tn=g.findOne('.tName');if(tn)tn.visible(vis);
           const tc=g.findOne('.tCode');if(tc)tc.visible(vis);
           const sd=g.findOne('.sDot');if(sd)sd.visible(vis);
           const st=g.findOne('.sTxt');if(st)st.visible(vis);
-          const sr=g.findOne('.selRing');if(sr)sr.visible(newLod);
         }});
         this.iL.batchDraw();
       });
@@ -1012,9 +1012,10 @@ class App {
       g.findOne('.imgGroup').visible(!lod);
       let nt=i.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';
       
-      if(!g.findOne('.tNameGrp'))g.findOne('.tName').setAttrs({text:nt,visible:!lod});
-      g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:lod});
-      g.findOne('.sTxt').setAttrs({text:i.status||'常用',fill:isIdle?'#ef4444':'#166534',visible:lod});
+      const tn=g.findOne('.tName');if(tn)tn.setAttrs({text:nt,visible:!lod});
+      g.findOne('.tCode').setAttrs({text:i.item_code,visible:!lod});
+      g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:!lod});
+      g.findOne('.sTxt').setAttrs({text:i.status||'常用',fill:isIdle?'#ef4444':'#166534',visible:!lod});
       if(i.image){
         const ir=g.findOne('.imgReal');
         const icon=g.findOne('.imgIcon');
@@ -1048,27 +1049,35 @@ class App {
     this._marqueeAnim=new Konva.Animation(()=>{
       if(this.sel.length!==1){
         // Reset ALL text positions when nothing selected
-        this.iL.getChildren().forEach(g=>{if(g.name()==='item-group'){const tg=g.findOne('.tNameGrp');if(tg){const tn=tg.findOne('.tName');if(tn)tn.x(0)}}});
+        this.iL.getChildren().forEach(g=>{if(g.name()==='item-group'){const tn=g.findOne('.tName');if(tn){tn.x(64);tn.clipFunc(null);const it=this.st.items.find(i=>i.id===g.id());if(it){let nt=it.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';tn.text(nt)}}}});
         return;
       }
       const g=this.stage.findOne('#'+this.sel[0]);
       if(!g||g.name()!=='item-group'){
-        this.iL.getChildren().forEach(g=>{if(g.name()==='item-group'){const tg=g.findOne('.tNameGrp');if(tg){const tn=tg.findOne('.tName');if(tn)tn.x(0)}}});
+        this.iL.getChildren().forEach(g=>{if(g.name()==='item-group'){const tn=g.findOne('.tName');if(tn){tn.x(64);tn.clipFunc(null);const it=this.st.items.find(i=>i.id===g.id());if(it){let nt=it.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';tn.text(nt)}}}});
         return;
       }
       const it=this.st.items.find(i=>i.id===this.sel[0]);
-      const tnGrp=g.findOne('.tNameGrp');if(!tnGrp)return;const tn=tnGrp.findOne('.tName');if(!tn)return;
-      if(!it||(it.name||'').length<=7){tn.x(0);return}
-      const tw=tn.width();if(tw<=90){tn.x(0);return}
+      const tn=g.findOne('.tName');if(!tn)return;
+      if(!it||(it.name||'').length<=7){tn.x(64);tn.clipFunc(null);return}
+      
+      // Set the full text for measuring and scrolling
+      tn.text(it.name||'');
+      const tw=tn.width();if(tw<=90){tn.x(64);tn.clipFunc(null);return}
+      
       const speed=18;const dist=tw-90+40;
       const t=(Date.now()/1000*speed)%dist;
-      tn.x(-t);
-      // Clip group to contain text
-      if(!g.findOne('.nameClip')){
-        const clipRect=new Konva.Rect({name:'nameClip',x:64,y:10,width:90,height:16,fill:'transparent',listening:false});
-        g.add(clipRect);
-        // Use group-level clip instead (move tName into a clip group)
-      }
+      tn.x(64-t);
+      
+      // Setup clipping on the node itself
+      tn.clipFunc(ctx=>{
+        ctx.beginPath();
+        // Since we are clipping the node itself, the context origin is at tn.x(), tn.y()
+        // We want to clip a fixed window starting at x=64 in the parent's coordinates.
+        // Therefore, local clip rect x = 64 - tn.x()
+        ctx.rect(64-tn.x(), 0, 90, 16);
+        ctx.closePath();
+      });
     },this.tL);
     /* marquee starts on demand */
   }

@@ -10,7 +10,7 @@
   :root { --dot: #cbd5e1; --pri: #3b82f6; --ring: rgba(59,130,246,0.4); }
   *{margin:0;padding:0;box-sizing:border-box}
   body,html{height:100%;overflow:hidden;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
-  #konva-container{position:relative;width:100%;height:100%;background:#fafbfc;outline:none}
+  #konva-container{position:relative;width:100%;height:100%;background:#fafbfc;outline:none}#konva-container.ready{visibility:visible}#konva-container:not(.ready){visibility:hidden}
   #konva-container.grab{cursor:grab!important}
   #konva-container.grabbing{cursor:grabbing!important}
   .fixed-ui{position:absolute;z-index:20;pointer-events:none}
@@ -156,7 +156,7 @@
   </div>
   <div class="table-wrapper">
     <table id="data-table">
-      <thead><tr onblur="app._saveHeaders()" oninput="app._saveHeaders()"><th style="width:48px"><div class="hdr-inp" contenteditable="true">图片</div></th><th style="width:80px"><div class="hdr-inp" contenteditable="true">编号</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">名称</div></th><th style="width:70px"><div class="hdr-inp" contenteditable="true">分类</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">房间(1级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">位置(2级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">容器(3级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">子容器(4级)</div></th><th style="width:60px"><div class="hdr-inp" contenteditable="true">状态</div></th><th style="width:50px"><div class="hdr-inp" contenteditable="true">数量</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">备注</div></th><th style="width:40px"><div class="hdr-inp" style="color:#94a3b8">操作</div></th></tr></thead>
+      <thead><tr onblur="app._saveHeaders()" oninput="app._saveHeaders()"><th style="width:48px"><div class="hdr-inp" contenteditable="true">图片</div></th><th style="width:80px"><div class="hdr-inp" contenteditable="true" title="点击设置编号前缀" onclick="app.setCodePrefix()" style="cursor:pointer">编号</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">名称</div></th><th style="width:70px"><div class="hdr-inp" contenteditable="true">分类</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">房间(1级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">位置(2级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">容器(3级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">子容器(4级)</div></th><th style="width:60px"><div class="hdr-inp" contenteditable="true">状态</div></th><th style="width:50px"><div class="hdr-inp" contenteditable="true">数量</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">备注</div></th><th style="width:40px"><div class="hdr-inp" style="color:#94a3b8">操作</div></th></tr></thead>
       <tbody id="table-body"></tbody>
     </table>
   </div>
@@ -195,7 +195,7 @@ const NODE_S = {
 const CATS = ['衣物','书籍文件','电子产品','日用品','收藏/纪念品','工具','其他'];
 const STATS = ['常用','偶尔','闲置待处理'];
 const SORTS = [{l:'最新创建 ▲',v:'id-desc'},{l:'最新创建 ▼',v:'id-asc'},{l:'编号升序',v:'code-asc'},{l:'编号降序',v:'code-desc'},{l:'名称 A-Z',v:'name-asc'},{l:'名称 Z-A',v:'name-desc'},{l:'数量多→少',v:'qty-desc'},{l:'数量少→多',v:'qty-asc'}];
-let _nextItemCode=1;
+let _nextItemCode=1;_codePrefix='ITM-';
 const GID = () => 'id_'+Math.random().toString(36).substr(2,9);
 
 // Force 1x pixel ratio — cuts GPU fill-rate by 4x on Retina for ~3x smoother rendering
@@ -298,6 +298,7 @@ class App {
         if(v.stageScale)this.stage.scale({x:v.stageScale,y:v.stageScale});
         if(v.panelW){const p=document.getElementById('side-panel');p.style.width=v.panelW+'px';p.style.minWidth=''}
         this.updateArrowPos();
+        document.getElementById('konva-container').classList.add('ready');
       }
     }catch(e){console.error(e)}
   }
@@ -418,7 +419,7 @@ class App {
         h+=g.items.map(i=>{
           const sel=this.sel.includes(i.id)?'selected':'';
           const{l1,l2,l3,l4}=this.getH(i.location_id);
-          return`<tr class="item-row ${sel}" data-id="${i.id}" onclick="app.rowClick('${i.id}',event)"><td><div class="img-upload-box" onclick="event.stopPropagation();${i.image?`app.openLightbox('${i.id}')`:`app.trigUp('${i.id}')`}">${i.image?`<img src="/uploads/${i.image}">`:'<span style="color:#cbd5e1;font-size:16px">📷</span>'}</div></td><td><div style="font-size:11px;color:#64748b;font-family:monospace">${i.item_code}</div></td><td style="position:relative"><input class="input-ghost rt-trigger" style="font-weight:500;color:#1e293b;padding-right:24px" value="${i.name||''}" onchange="app.upItem('${i.id}','name',this.value)" onfocus="this.nextElementSibling.style.display='block'" onblur="setTimeout(()=>this.nextElementSibling.style.display='none',200)"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','name')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#93c5fd;cursor:pointer;font-size:10px;padding:2px;display:none" title="富文本编辑">✎</button></td><td><div class="custom-select" data-id="${i.id}" data-field="category">${i.category||'请选择'}</div></td><td><input class="input-ghost" value="${l1?l1.name:''}" placeholder="房间" onchange="app.hInput('${i.id}',1,this.value)"></td><td><input class="input-ghost" value="${l2?l2.name:''}" placeholder="位置" onchange="app.hInput('${i.id}',2,this.value)" ${l1?'':'disabled'}></td><td><input class="input-ghost" value="${l3?l3.name:''}" placeholder="容器" onchange="app.hInput('${i.id}',3,this.value)" ${l2?'':'disabled'}></td><td><input class="input-ghost" value="${l4?l4.name:''}" placeholder="子容器" onchange="app.hInput('${i.id}',4,this.value)" ${l3?'':'disabled'}></td><td><div class="custom-select ${i.status==='闲置待处理'?'badge-idle':'badge-active'}" data-id="${i.id}" data-field="status">${i.status||'常用'}</div></td><td><input type="number" min="1" class="input-ghost" value="${i.quantity||1}" onchange="app.upItem('${i.id}','quantity',this.value)"></td><td><input class="input-ghost" value="${i.notes||''}" placeholder="..." onchange="app.upItem('${i.id}','notes',this.value)"></td><td><button onclick="app.openDetail('${i.id}');event.stopPropagation()" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 2px;border-radius:4px;font-size:11px" title="更多信息">⋯</button><button data-del="${i.id}" onclick="event.stopPropagation();app.delConfirm('${i.id}')" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 8px;border-radius:4px">✖</button></td></tr>`;
+          return`<tr class="item-row ${sel}" data-id="${i.id}" onclick="app.rowClick('${i.id}',event)"><td><div class="img-upload-box" onclick="event.stopPropagation();${i.image?`app.openLightbox('${i.id}')`:`app.trigUp('${i.id}')`}">${i.image?`<img src="/uploads/${i.image}">`:'<span style="color:#cbd5e1;font-size:16px">📷</span>'}</div></td><td><div style="font-size:11px;color:#64748b;font-family:monospace">${i.item_code}</div></td><td style="position:relative"><input class="input-ghost rt-trigger" style="font-weight:500;color:#1e293b;padding-right:24px" value="${i.name||''}" onchange="app.upItem('${i.id}','name',this.value)" onfocus="this.nextElementSibling.style.display='block'" onblur="setTimeout(()=>this.nextElementSibling.style.display='none',200)"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','name')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#93c5fd;cursor:pointer;font-size:10px;padding:2px;display:none" title="富文本编辑">✎</button></td><td><div class="custom-select" data-id="${i.id}" data-field="category">${i.category||'请选择'}</div></td><td><span style="position:relative;display:inline-block;width:100%"><input class="input-ghost rt-trigger" value="${l1?l1.name:''}" placeholder="房间" onchange="app.hInput('${i.id}',1,this.value)" onfocus="this.nextElementSibling.style.display='block'" onblur="setTimeout(()=>this.nextElementSibling.style.display='none',200)" style="padding-right:20px;width:100%"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','room')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#93c5fd;cursor:pointer;font-size:10px;padding:2px;display:none" title="展开编辑">✎</button></span></td><td><span style="position:relative;display:inline-block;width:100%"><input class="input-ghost rt-trigger" value="${l2?l2.name:''}" placeholder="位置" onchange="app.hInput('${i.id}',2,this.value)" ${l1?'':'disabled'} onfocus="this.nextElementSibling.style.display='block'" onblur="setTimeout(()=>this.nextElementSibling.style.display='none',200)" style="padding-right:20px;width:100%"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','pos')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#93c5fd;cursor:pointer;font-size:10px;padding:2px;display:none" title="展开编辑">✎</button></span></td><td><span style="position:relative;display:inline-block;width:100%"><input class="input-ghost rt-trigger" value="${l3?l3.name:''}" placeholder="容器" onchange="app.hInput('${i.id}',3,this.value)" ${l2?'':'disabled'} onfocus="this.nextElementSibling.style.display='block'" onblur="setTimeout(()=>this.nextElementSibling.style.display='none',200)" style="padding-right:20px;width:100%"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','con')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#93c5fd;cursor:pointer;font-size:10px;padding:2px;display:none" title="展开编辑">✎</button></span></td><td><span style="position:relative;display:inline-block;width:100%"><input class="input-ghost rt-trigger" value="${l4?l4.name:''}" placeholder="子容器" onchange="app.hInput('${i.id}',4,this.value)" ${l3?'':'disabled'} onfocus="this.nextElementSibling.style.display='block'" onblur="setTimeout(()=>this.nextElementSibling.style.display='none',200)" style="padding-right:20px;width:100%"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','sub')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#93c5fd;cursor:pointer;font-size:10px;padding:2px;display:none" title="展开编辑">✎</button></span></td><td><div class="custom-select ${i.status==='闲置待处理'?'badge-idle':'badge-active'}" data-id="${i.id}" data-field="status">${i.status||'常用'}</div></td><td><input type="number" min="1" class="input-ghost" value="${i.quantity||1}" onchange="app.upItem('${i.id}','quantity',this.value)"></td><td><span style="position:relative;display:inline-block;width:100%"><input class="input-ghost rt-trigger" value="${i.notes||''}" placeholder="..." onchange="app.upItem('${i.id}','notes',this.value)" onfocus="this.nextElementSibling.style.display='block'" onblur="setTimeout(()=>this.nextElementSibling.style.display='none',200)" style="padding-right:20px;width:100%"><button onclick="event.stopPropagation();app.openRichEdit('${i.id}','notes')" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:#93c5fd;cursor:pointer;font-size:10px;padding:2px;display:none" title="展开编辑">✎</button></span></td><td><button onclick="app.openDetail('${i.id}');event.stopPropagation()" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 2px;border-radius:4px;font-size:11px" title="更多信息">⋯</button><button data-del="${i.id}" onclick="event.stopPropagation();app.delConfirm('${i.id}')" style="color:#94a3b8;border:none;background:transparent;cursor:pointer;padding:4px 8px;border-radius:4px">✖</button></td></tr>`;
         }).join('');
       }
     });
@@ -434,7 +435,7 @@ class App {
     const used=new Set(this.st.items.map(i=>parseInt((i.item_code||'').replace('ITM-',''))).filter(n=>!isNaN(n)));
     let codeNum=_nextItemCode;
     while(used.has(codeNum))codeNum++;
-    const code='ITM-'+String(codeNum).padStart(4,'0');
+    const code=_codePrefix+String(codeNum).padStart(4,'0');
     _nextItemCode=codeNum+1;
     const cx=(-this.stage.x()+this.stage.width()/2)/this.stage.scaleX()-80;
     const cy=(-this.stage.y()+this.stage.height()/2)/this.stage.scaleY()-30;
@@ -445,13 +446,15 @@ class App {
   delItem(id){this.st.items=this.st.items.filter(i=>i.id!==id);if(this.sel.includes(id)){this.sel=[];this.tr.nodes([])}this.record()}
 
   trigUp(id){this.upId=id;document.getElementById('fileInput').click()}
+  setCodePrefix(){const p=prompt('编号前缀:',_codePrefix);if(p!==null){_codePrefix=p;this.rT();this.record()}}
 
   _lbId=null;_lbScale=1;_lbPanX=0;_lbPanY=0;
   openLightbox(id){
     const it=this.st.items.find(i=>i.id===id);
     if(!it||!it.image)return;
     this._lbId=id;this._lbScale=1;this._lbPanX=0;this._lbPanY=0;
-    const img=document.getElementById('lb-img');img.src='/uploads/'+it.image;
+    const img=document.getElementById('lb-img');img.src='/uploads/'+it.image;img.onclick=e=>e.stopPropagation();
+    const lb=document.getElementById('img-lightbox');lb.onclick=function(e){if(e.target===lb)app.closeLightbox()};
     img.style.transform='';img.onwheel=e=>{e.preventDefault();this._lbScale=Math.max(.5,Math.min(5,this._lbScale+(e.deltaY>0?-.2:.2)));img.style.transform=`scale(${this._lbScale})`};
     let drag=false,sX,sY;img.onmousedown=e=>{drag=true;sX=e.clientX-this._lbPanX;sY=e.clientY-this._lbPanY;img.classList.add('dragging')};
     window.onmousemove=e=>{if(drag){this._lbPanX=e.clientX-sX;this._lbPanY=e.clientY-sY;img.style.transform=`translate(${this._lbPanX}px,${this._lbPanY}px) scale(${this._lbScale})`}};
@@ -490,13 +493,26 @@ class App {
   openRichEdit(id,field){
     const it=this.st.items.find(i=>i.id===id);if(!it)return;
     this._rtId=id;this._rtField=field;
+    // Resolve hierarchy field values
+    let val='';const{l1,l2,l3,l4}=this.getH(it.location_id);
+    if(field==='room')val=l1?l1.name:'';
+    else if(field==='pos')val=l2?l2.name:'';
+    else if(field==='con')val=l3?l3.name:'';
+    else if(field==='sub')val=l4?l4.name:'';
+    else val=it[field]||'';
     document.getElementById('rt-title').textContent='编辑 '+field;
-    document.getElementById('rt-textarea').value=it[field]||'';
+    document.getElementById('rt-textarea').value=val;
+    if(this._rtModal_detailDiv){this._rtModal_detailDiv.style.display='none';this._rtModal_detailDiv.innerHTML=''}
+    document.getElementById('rt-textarea').style.display='';
     document.getElementById('rt-modal').style.display='flex';
     document.getElementById('rt-save').onclick=()=>{
-      it[field]=document.getElementById('rt-textarea').value;
-      const m=document.getElementById('rt-modal');m.style.display='none';if(m._detailDiv){m._detailDiv.style.display='none';m._detailDiv.innerHTML=''};document.getElementById('rt-textarea').style.display='';
-      this.rT();this.record();
+      const newVal=document.getElementById('rt-textarea').value;
+      if(field==='room')this.hInput(id,1,newVal);
+      else if(field==='pos')this.hInput(id,2,newVal);
+      else if(field==='con')this.hInput(id,3,newVal);
+      else if(field==='sub')this.hInput(id,4,newVal);
+      else{it[field]=newVal;this.rT();this.record()}
+      document.getElementById('rt-modal').style.display='none';
     };
   }
   // Record detail panel (Feishu-style)
@@ -516,10 +532,10 @@ class App {
     const modal=document.getElementById('rt-modal');
     const content=modal.querySelector('div > div:last-child');
     // Store detail content
-    if(!modal._detailDiv){modal._detailDiv=document.createElement('div');modal.querySelector('div').insertBefore(modal._detailDiv,modal.querySelector('div').lastElementChild)}
-    modal._detailDiv.innerHTML=h;modal._detailDiv.style.display='block';
+    if(!this._rtModal_detailDiv){this._rtModal_detailDiv=document.createElement('div');modal.querySelector('div').insertBefore(this._rtModal_detailDiv,modal.querySelector('div').lastElementChild)}
+    this._rtModal_detailDiv.innerHTML=h;this._rtModal_detailDiv.style.display='block';
     modal.style.display='flex';
-    document.getElementById('rt-save').onclick=()=>{modal.style.display='none';modal._detailDiv.style.display='none';document.getElementById('rt-textarea').style.display='';this.rT()};
+    modal.style.display='flex';document.getElementById('rt-save').onclick=()=>{modal.style.display='none';this._rtModal_detailDiv.style.display='none';this._rtModal_detailDiv.innerHTML='';document.getElementById('rt-textarea').style.display='';this.rT()}
   }
 
   // Header persistence
@@ -538,7 +554,7 @@ class App {
     document.addEventListener('click',e=>{
       const sel=e.target.closest('.custom-select');
       if(sel){e.stopPropagation();const f=sel.dataset.field;const id=sel.dataset.id;let opts=[],cb=null;
-        if(f==='category'){opts=CATS.map(c=>({l:c,v:c}));cb=v=>this.upItem(id,f,v)}
+        if(f==='category'){opts=CATS.map(c=>({l:c,v:c}));opts.push({l:'+ 添加分类',v:'__new__'});cb=v=>{if(v==='__new__'){const nv=prompt('新分类名:');if(nv&&!CATS.includes(nv)){CATS.push(nv);this.upItem(id,f,nv)}else if(nv)this.upItem(id,f,nv)}else this.upItem(id,f,v)}}
         else if(f==='status'){opts=STATS.map(c=>({l:c,v:c}));cb=v=>this.upItem(id,f,v)}
         else if(f==='filter_cat'){opts=[{l:'全部分类',v:''},...CATS.map(c=>({l:c,v:c}))];cb=v=>{this.filt.cat=v;sel.textContent=v||'全部分类';this.rT();this.sync()}}
         else if(f==='filter_status'){opts=[{l:'全部状态',v:''},...STATS.map(c=>({l:c,v:c}))];cb=v=>{this.filt.stat=v;sel.textContent=v||'全部状态';this.rT();this.sync()}}
@@ -932,15 +948,7 @@ class App {
       g.findOne('.lodDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:lod,stroke:isS?'#000':null,strokeWidth:2});
       g.findOne('.imgGroup').visible(!lod);
       let nt=i.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';
-      const fullName=i.name||'';const isLong=fullName.length>7;
-      g.findOne('.tName').setAttrs({text:isS&&isLong?fullName:nt,visible:!lod});
-      // Clip long names on canvas when selected to prevent overflow
-      if(isS&&isLong){
-        const tn=g.findOne('.tName');tn.clipFunc(function(ctx){ctx.rect(0,0,90,16)});
-        tn.setAttrs({x:64,y:10});
-      }else{
-        g.findOne('.tName').clipFunc(null);
-      }
+      g.findOne('.tName').setAttrs({text:nt,visible:!lod});
       g.findOne('.tCode').setAttrs({text:i.item_code,visible:!lod});
       g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:!lod});
       g.findOne('.sTxt').setAttrs({text:i.status||'常用',fill:isIdle?'#ef4444':'#166534',visible:!lod});

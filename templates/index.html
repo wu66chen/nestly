@@ -15,7 +15,7 @@
   #konva-container.grabbing{cursor:grabbing!important}
   .fixed-ui{position:absolute;z-index:20;pointer-events:none}
   .fixed-ui>*{pointer-events:auto}
-  .view-switcher{top:16px;left:50%;z-index:50!important;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
+  .view-switcher{position:relative;top:16px;left:50%;z-index:50!important;transform:translateX(-50%);display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);padding:4px;border-radius:10px;box-shadow:0 4px 12px -2px rgba(0,0,0,.1);border:1px solid #e2e8f0}
   .view-tab{padding:6px 16px;font-size:13px;font-weight:500;color:#64748b;border-radius:6px;cursor:pointer;white-space:nowrap}
   .view-tab:hover{color:#1e293b}
   .view-tab.active{background:#eff6ff;color:var(--pri);box-shadow:0 1px 2px rgba(0,0,0,.05)}
@@ -807,6 +807,9 @@ class App {
       this.stage.scale({x:ns,y:ns});this.stage.position({x:pt.x-mp.x*ns,y:pt.y-mp.y*ns});this.upBg();
       // Only update capsule scale+position; NO full scene rebuild!
       const cs=ns<0.6?1/(ns*1.5):1/ns;this.cL.getChildren().forEach(cap=>cap.setAttrs({scaleX:cs,scaleY:cs}));
+      // Update LOD during zoom
+      const newLod=ns<0.4;
+      this.iL.getChildren().forEach(g=>{if(g.name()==='item-group'){g.findOne('.bgCard').visible(!newLod);g.findOne('.imgGroup').visible(!newLod);g.findOne('.tName').visible(!newLod);g.findOne('.tCode').visible(!newLod);g.findOne('.sDot').visible(!newLod);g.findOne('.sTxt').visible(!newLod);const tg=g.findOne('.tNameGrp');if(tg)tg.visible(!newLod);g.findOne('.selRing').visible(newLod)}});
       this._reqCaps();this._updateAnchors();this.saveViewState();
     });
 
@@ -956,12 +959,15 @@ class App {
     fi.forEach(i=>{
       ai.add(i.id);
       // Viewport culling: skip items far outside view
+      // Always process items if they're selected or being dragged
+      let outOfView=false;
       if(i.location_id){
         const pn=nodeMap.get(i.location_id);
         if(pn){const cols=Math.max(1,Math.floor((pn.width-24+8)/168));const idx=i.sort_order||0;
         const iy=pn.y+40+Math.floor(idx/cols)*72;const ix=pn.x+12+(idx%cols)*168;
-        if(ix+160<vp.l||ix>vp.r||iy+64<vp.t||iy>vp.b){visCount++;if(visCount>30){let g=this.stage.findOne('#'+i.id);if(g)g.visible(false);return}}}
-      }else{if(i.x+160<vp.l||i.x>vp.r||i.y+64<vp.t||i.y>vp.b){visCount++;if(visCount>30){let g=this.stage.findOne('#'+i.id);if(g)g.visible(false);return}}}
+        outOfView=ix+160<vp.l||ix>vp.r||iy+64<vp.t||iy>vp.b}
+      }else{outOfView=i.x+160<vp.l||i.x>vp.r||i.y+64<vp.t||i.y>vp.b}
+      if(outOfView&&!isS&&i.id!==this.dragId){visCount++;if(visCount>20){let g=this.stage.findOne('#'+i.id);if(g)g.visible(false);return}}
       let g=this.stage.findOne('#'+i.id);const isS=this.sel.includes(i.id);
       const iW=160,iH=64,isIdle=i.status==='闲置待处理';
       if(!g){

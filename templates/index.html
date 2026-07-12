@@ -1000,7 +1000,7 @@ class App {
       const tnGrp=g.findOne('.tNameGrp');if(!tnGrp)return;const tn=tnGrp.findOne('.tName');if(!tn)return;
       if(!it||(it.name||'').length<=7){tn.x(0);return}
       const tw=tn.width();if(tw<=90){tn.x(0);return}
-      const speed=25;const dist=tw-90+40;
+      const speed=18;const dist=tw-90+40;
       const t=(Date.now()/1000*speed)%dist;
       tn.x(-t);
       // Clip group to contain text

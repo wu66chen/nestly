@@ -157,7 +157,7 @@
   <div class="table-wrapper">
     <table id="data-table">
       <thead><tr onblur="app._saveHeaders()" oninput="app._saveHeaders()"><th style="width:48px"><div class="hdr-inp" contenteditable="true">图片</div></th><th style="width:80px"><div class="hdr-inp" contenteditable="true" title="点击设置编号前缀" onclick="app.setCodePrefix()" style="cursor:pointer">编号</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">名称</div></th><th style="width:70px"><div class="hdr-inp" contenteditable="true">分类</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">房间(1级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">位置(2级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">容器(3级)</div></th><th style="width:90px"><div class="hdr-inp" contenteditable="true" style="color:#3b82f6;font-weight:600">子容器(4级)</div></th><th style="width:60px"><div class="hdr-inp" contenteditable="true">状态</div></th><th style="width:50px"><div class="hdr-inp" contenteditable="true">数量</div></th><th style="width:100px"><div class="hdr-inp" contenteditable="true">备注</div></th><th style="width:40px"><div class="hdr-inp" style="color:#94a3b8">操作</div></th></tr></thead>
-      <tbody id="table-body"></tbody>
+      <tbody id="table-body" style="visibility:hidden"></tbody>
     </table>
   </div>
 </div>
@@ -232,7 +232,7 @@ class App {
     document.querySelectorAll('.view-tab').forEach(e=>e.classList.remove('active'));
     document.querySelector(`.view-tab[data-view="${m}"]`).classList.add('active');
     const p=document.getElementById('side-panel');
-    if(m==='table'){p.classList.add('fullscreen');p.classList.remove('collapsed');p.style.width=''}
+    const tg2=document.getElementById('panel-toggle-btn');if(m==='table'){p.classList.add('fullscreen');p.classList.remove('collapsed');p.style.width='';if(tg2)tg2.style.display='none'}
     else p.classList.remove('fullscreen');
     setTimeout(()=>{this.stage.width(document.getElementById('konva-container').clientWidth);this.stage.height(document.getElementById('konva-container').clientHeight);this.updateArrowPos()},450);
   }
@@ -423,7 +423,7 @@ class App {
         }).join('');
       }
     });
-    document.getElementById('table-body').innerHTML=h;
+    const tb=document.getElementById('table-body');tb.innerHTML=h;tb.style.visibility='visible';
   }
 
   upItem(id,f,v){const it=this.st.items.find(x=>x.id===id);if(it&&it[f]!==v){if(f==='quantity')v=parseInt(v)||1;it[f]=v;this.record()}}
@@ -555,7 +555,7 @@ class App {
       const sel=e.target.closest('.custom-select');
       if(sel){e.stopPropagation();const f=sel.dataset.field;const id=sel.dataset.id;let opts=[],cb=null;
         if(f==='category'){opts=CATS.map(c=>({l:c,v:c}));opts.push({l:'+ 添加分类',v:'__new__'});cb=v=>{if(v==='__new__'){const nv=prompt('新分类名:');if(nv&&!CATS.includes(nv)){CATS.push(nv);this.upItem(id,f,nv)}else if(nv)this.upItem(id,f,nv)}else this.upItem(id,f,v)}}
-        else if(f==='status'){opts=STATS.map(c=>({l:c,v:c}));cb=v=>this.upItem(id,f,v)}
+        else if(f==='status'){opts=STATS.map(c=>({l:c,v:c}));opts.push({l:'+ 添加状态',v:'__new__'});cb=v=>{if(v==='__new__'){const nv=prompt('新状态名:');if(nv&&!STATS.includes(nv)){STATS.push(nv);this.upItem(id,f,nv)}else if(nv)this.upItem(id,f,nv)}else this.upItem(id,f,v)}}
         else if(f==='filter_cat'){opts=[{l:'全部分类',v:''},...CATS.map(c=>({l:c,v:c}))];cb=v=>{this.filt.cat=v;sel.textContent=v||'全部分类';this.rT();this.sync()}}
         else if(f==='filter_status'){opts=[{l:'全部状态',v:''},...STATS.map(c=>({l:c,v:c}))];cb=v=>{this.filt.stat=v;sel.textContent=v||'全部状态';this.rT();this.sync()}}
         else if(f==='sort_rule'){opts=SORTS;cb=v=>{this.sort=v;sel.textContent=SORTS.find(x=>x.v===v).l;this.rT()}}
@@ -838,7 +838,7 @@ class App {
   bindEvts() {
     window.addEventListener('keydown',e=>{
       if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;
-      if(e.code==='Space'){e.preventDefault();this.spPress=true;document.getElementById('konva-container').classList.add('grab');this.nL.listening(false);this.iL.listening(false);this.cL.listening(false)}
+      if(e.code==='Escape'){this.closeLightbox()};if(e.code==='Space'){e.preventDefault();this.spPress=true;document.getElementById('konva-container').classList.add('grab');this.nL.listening(false);this.iL.listening(false);this.cL.listening(false)}
       if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)this.redo();else this.undo()}
       if((e.code==='Backspace'||e.code==='Delete')&&this.sel.length>0&&!['INPUT','TEXTAREA'].includes(e.target.tagName)&&!e.target.isContentEditable){e.preventDefault();const ids=[...this.sel];this.st.nodes=this.st.nodes.filter(n=>!ids.includes(n.id));this.st.items=this.st.items.filter(i=>!ids.includes(i.id));this.st.items.forEach(i=>{if(ids.includes(i.location_id))i.location_id=null});this.sel=[];this.tr.nodes([]);this.record()}
     });
@@ -948,7 +948,7 @@ class App {
       g.findOne('.lodDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:lod,stroke:isS?'#000':null,strokeWidth:2});
       g.findOne('.imgGroup').visible(!lod);
       let nt=i.name||'';if(nt.length>7)nt=nt.substring(0,6)+'...';
-      g.findOne('.tName').setAttrs({text:nt,visible:!lod});
+      g.findOne('.tName').setAttrs({text:isS&&(i.name||'').length>7?(i.name||''):nt,visible:!lod});
       g.findOne('.tCode').setAttrs({text:i.item_code,visible:!lod});
       g.findOne('.sDot').setAttrs({fill:isIdle?'#ef4444':'#22c55e',visible:!lod});
       g.findOne('.sTxt').setAttrs({text:i.status||'常用',fill:isIdle?'#ef4444':'#166534',visible:!lod});
@@ -961,6 +961,21 @@ class App {
     this.iL.getChildren().forEach(c=>{if(c.name()==='item-group'&&!ai.has(c.id()))c.destroy()});
     this.tr.moveToTop();
     this._updateAnchors();
+    // Marquee animation for selected long item names
+    this._marqueeAnim=new Konva.Animation(()=>{
+      if(this.sel.length!==1)return;
+      const g=this.stage.findOne('#'+this.sel[0]);
+      if(!g||g.name()!=='item-group')return;
+      const it=this.st.items.find(i=>i.id===this.sel[0]);
+      if(!it||(it.name||'').length<=7)return;
+      const tn=g.findOne('.tName');
+      if(!tn)return;
+      const tw=tn.width();const cw=90; // clip width
+      if(tw<=cw){tn.x(64);return}
+      const t=(Date.now()/1000)%((tw+cw)/30);
+      tn.x(64-(t*30)%(tw+cw));
+    },this.tL);
+    this._marqueeAnim.start();
   }
 
   // ---- POSITION CAPSULES ---- (Use screen coords directly, bypass transform chain)

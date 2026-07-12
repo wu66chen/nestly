@@ -259,13 +259,6 @@ class App {
   }
 
   updateArrowPos() {} // Deprecated, handled purely by DOM structure now
-    if(p.classList.contains('fullscreen')){tg.style.display='none';return}
-    tg.style.display='flex';
-    const pr=p.getBoundingClientRect();
-    tg.style.left=(pr.left-36)+'px';
-    tg.style.top=(pr.top+16)+'px';
-    tg.style.right='auto';
-  }
 
   _svsTimer=null;
   saveViewState(){

@@ -27,7 +27,7 @@
   .guide-panel.collapsed{transform:translateY(150%)}
   .guide-close{cursor:pointer;color:#94a3b8}
   .guide-close:hover{color:#1e293b}
-  .side-panel{top:16px;right:16px;bottom:16px;z-index:9;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);border:1px solid #e2e8f0;display:flex;flex-direction:column;width:30%;min-width:540px;transition:right .4s cubic-bezier(.16,1,.3,1)}
+  .side-panel{top:16px;right:16px;bottom:16px;z-index:10;background:rgba(255,255,255,.95);backdrop-filter:blur(12px);border-radius:16px;box-shadow:0 10px 25px -5px rgba(0,0,0,.1);border:1px solid #e2e8f0;display:flex;flex-direction:column;width:30%;min-width:540px;transition:right .4s cubic-bezier(.16,1,.3,1)}
   .side-panel.collapsed{right:calc(-30% + 16px)}
   .side-panel.fullscreen{left:16px;right:16px;width:auto;max-width:unset;bottom:16px;top:72px}
   .side-panel.fullscreen .resize-handle{display:none}
@@ -808,8 +808,21 @@ class App {
       // Only update capsule scale+position; NO full scene rebuild!
       const cs=ns<0.6?1/(ns*1.5):1/ns;this.cL.getChildren().forEach(cap=>cap.setAttrs({scaleX:cs,scaleY:cs}));
       // Update LOD during zoom
+      // Live LOD update: toggle detailed/simple view during zoom
       const newLod=ns<0.4;
-      this.iL.getChildren().forEach(g=>{if(g.name()==='item-group'){const vis=!newLod;g.findOne('.bgCard').visible(vis);g.findOne('.imgGroup').visible(vis);const tng=g.findOne('.tNameGrp');if(tng)tng.visible(vis);else g.findOne('.tName').visible(vis);g.findOne('.tCode').visible(vis);g.findOne('.sDot').visible(vis);g.findOne('.sTxt').visible(vis);g.findOne('.selRing').visible(newLod)}});
+      requestAnimationFrame(()=>{
+        this.iL.getChildren().forEach(g=>{if(g.name()==='item-group'){
+          const vis=!newLod;
+          const bg=g.findOne('.bgCard');if(bg)bg.visible(vis);
+          const ig=g.findOne('.imgGroup');if(ig)ig.visible(vis);
+          const tn=g.findOne('.tName');if(tn&&tn.parent&&tn.parent.name()==='tNameGrp')tn.parent.visible(vis);else if(tn)tn.visible(vis);
+          const tc=g.findOne('.tCode');if(tc)tc.visible(vis);
+          const sd=g.findOne('.sDot');if(sd)sd.visible(vis);
+          const st=g.findOne('.sTxt');if(st)st.visible(vis);
+          const sr=g.findOne('.selRing');if(sr)sr.visible(newLod);
+        }});
+        this.iL.batchDraw();
+      });
       this._reqCaps();this._updateAnchors();this.saveViewState();
     });
 
@@ -898,8 +911,7 @@ class App {
     const nodeMap=new Map();this.st.nodes.forEach(n=>nodeMap.set(n.id,n));
     
     // --- 0. VIEWPORT CULLING ---
-    const vp={l:-this.stage.x()/sc-200,t:-this.stage.y()/sc-200,r:(-this.stage.x()+this.stage.width())/sc+200,b:(-this.stage.y()+this.stage.height())/sc+200};
-    const inView=n=>n.x+n.width>vp.l&&n.x<vp.r&&n.y+n.height>vp.t&&n.y<vp.b;
+/* viewport culling disabled for reliability */
 
     // --- 1. NODES (reuse, don't recreate) ---
     const an=new Set();
@@ -955,21 +967,9 @@ class App {
       return{x:p.x+n.x,y:p.y+n.y};
     };
     const ai=new Set(),fi=this.filtItems();
-    let visCount=0;
     fi.forEach(i=>{
       ai.add(i.id);
-      // Viewport culling: skip items far outside view
       const isS=this.sel.includes(i.id);
-      // Always process items if they're selected or being dragged
-      let outOfView=false;
-      if(i.location_id){
-        const np=absGet(i.location_id);
-        const pn=nodeMap.get(i.location_id);
-        const cols=Math.max(1,Math.floor(((pn?.width||600)-24+8)/168));const idx=i.sort_order||0;
-        const iy=np.y+40+Math.floor(idx/cols)*72;const ix=np.x+12+(idx%cols)*168;
-        outOfView=ix+160<vp.l||ix>vp.r||iy+64<vp.t||iy>vp.b
-      }else{outOfView=i.x+160<vp.l||i.x>vp.r||i.y+64<vp.t||i.y>vp.b}
-      if(outOfView&&!isS&&i.id!==this.dragId){visCount++;if(visCount>20){let g=this.stage.findOne('#'+i.id);if(g)g.visible(false);return}}
       let g=this.stage.findOne('#'+i.id);
       const iW=160,iH=64,isIdle=i.status==='闲置待处理';
       if(!g){
